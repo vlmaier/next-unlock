@@ -1,11 +1,31 @@
 import { Game, RankedAchievements } from '../types/achievement';
 import { MockSteamClientService } from './mockSteamClient';
 
+// Lazy-loaded call function from @decky/api
+let _callFn: ((...args: any[]) => Promise<any>) | null = null;
+
+async function getCallFn() {
+  if (_callFn) return _callFn;
+  try {
+    const mod = await import(/* @vite-ignore */ '@decky/api');
+    _callFn = mod.call;
+    return _callFn;
+  } catch {
+    return null;
+  }
+}
+
+// Allow tests to inject a mock call function
+export function __setCallFn(fn: ((...args: any[]) => Promise<any>) | null) {
+  _callFn = fn;
+}
+
 export class SteamApiService {
   static async getGames(): Promise<Game[]> {
     try {
-      const { call } = await import('@decky/api');
-      const res = await call<[], any>('get_games');
+      const callFn = await getCallFn();
+      if (!callFn) throw new Error('No Decky API');
+      const res = await callFn('get_games');
       const data = res && res.result ? res.result : res;
       if (Array.isArray(data) && data.length > 0) {
         return data;
@@ -18,8 +38,9 @@ export class SteamApiService {
 
   static async getGameDetails(appid: number): Promise<{ game: Game; ranked: RankedAchievements }> {
     try {
-      const { call } = await import('@decky/api');
-      const res = await call<[number], any>('get_game_details', appid);
+      const callFn = await getCallFn();
+      if (!callFn) throw new Error('No Decky API');
+      const res = await callFn('get_game_details', appid);
       const data = res && res.result ? res.result : res;
       if (data && data.game && data.ranked) {
         return data;
@@ -32,8 +53,9 @@ export class SteamApiService {
 
   static async togglePin(achievementId: string): Promise<{ achievement_id: string; pinned: boolean }> {
     try {
-      const { call } = await import('@decky/api');
-      const res = await call<[string], any>('toggle_pin', achievementId);
+      const callFn = await getCallFn();
+      if (!callFn) throw new Error('No Decky API');
+      const res = await callFn('toggle_pin', achievementId);
       const data = res && res.result ? res.result : res;
       if (data && data.achievement_id) {
         return data;

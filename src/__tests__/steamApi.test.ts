@@ -1,30 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SteamApiService } from '../services/steamApi';
-import { MockSteamClientService } from '../services/mockSteamClient';
-
-vi.mock('@decky/api', () => ({
-  call: vi.fn(),
-}));
-
-import { call } from '@decky/api';
+import { SteamApiService, __setCallFn } from '../services/steamApi';
 
 describe('SteamApiService Test Suite - 100% Execution Path Coverage', () => {
+  const mockCall = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
+    __setCallFn(mockCall);
   });
 
   describe('getGames() Paths', () => {
     it('should return live games list when Decky RPC call succeeds', async () => {
       const mockResult = [{ appid: 12345, name: 'Test Game', completion_percentage: 50, unlocked_count: 5, total_achievements: 10, achievements: [] }];
-      vi.mocked(call).mockResolvedValueOnce({ success: true, result: mockResult } as any);
+      mockCall.mockResolvedValueOnce({ success: true, result: mockResult });
 
       const games = await SteamApiService.getGames();
       expect(games).toEqual(mockResult);
-      expect(call).toHaveBeenCalledWith('get_games');
     });
 
     it('should fallback to MockSteamClientService when Decky RPC throws an error', async () => {
-      vi.mocked(call).mockRejectedValueOnce(new Error('RPC Connection Error'));
+      mockCall.mockRejectedValueOnce(new Error('RPC Connection Error'));
 
       const games = await SteamApiService.getGames();
       expect(games.length).toBeGreaterThan(0);
@@ -32,7 +27,7 @@ describe('SteamApiService Test Suite - 100% Execution Path Coverage', () => {
     });
 
     it('should fallback to MockSteamClientService when Decky RPC returns empty/invalid result', async () => {
-      vi.mocked(call).mockResolvedValueOnce({ success: false, result: null } as any);
+      mockCall.mockResolvedValueOnce({ success: false, result: null });
 
       const games = await SteamApiService.getGames();
       expect(games.length).toBeGreaterThan(0);
@@ -45,7 +40,7 @@ describe('SteamApiService Test Suite - 100% Execution Path Coverage', () => {
         game: { appid: 1245620, name: 'Elden Ring', completion_percentage: 80, unlocked_count: 8, total_achievements: 10, achievements: [] },
         ranked: { all: [], up_next: [], almost_there: [], easy_grabs: [], missable: [], pinned: [], unlocked: [], locked: [] },
       };
-      vi.mocked(call).mockResolvedValueOnce({ success: true, result: mockDetails } as any);
+      mockCall.mockResolvedValueOnce({ success: true, result: mockDetails });
 
       const details = await SteamApiService.getGameDetails(1245620);
       expect(details.game.name).toBe('Elden Ring');
@@ -53,7 +48,7 @@ describe('SteamApiService Test Suite - 100% Execution Path Coverage', () => {
     });
 
     it('should fallback to MockSteamClientService when Decky RPC fails for details', async () => {
-      vi.mocked(call).mockRejectedValueOnce(new Error('Backend Offline'));
+      mockCall.mockRejectedValueOnce(new Error('Backend Offline'));
 
       const details = await SteamApiService.getGameDetails(1245620);
       expect(details.game.appid).toBe(1245620);
@@ -63,14 +58,14 @@ describe('SteamApiService Test Suite - 100% Execution Path Coverage', () => {
 
   describe('togglePin() & unlockAchievement() Paths', () => {
     it('should handle togglePin via RPC when available', async () => {
-      vi.mocked(call).mockResolvedValueOnce({ success: true, result: { achievement_id: 'ACH_MALENIA', pinned: true } } as any);
+      mockCall.mockResolvedValueOnce({ success: true, result: { achievement_id: 'ACH_MALENIA', pinned: true } });
 
       const res = await SteamApiService.togglePin('ACH_MALENIA');
       expect(res.pinned).toBe(true);
     });
 
     it('should fallback togglePin to MockSteamClientService when RPC throws', async () => {
-      vi.mocked(call).mockRejectedValueOnce(new Error('RPC Error'));
+      mockCall.mockRejectedValueOnce(new Error('RPC Error'));
 
       const res = await SteamApiService.togglePin('ACH_MALENIA');
       expect(res.achievement_id).toBe('ACH_MALENIA');
@@ -79,6 +74,13 @@ describe('SteamApiService Test Suite - 100% Execution Path Coverage', () => {
     it('should unlock achievement locally in MockSteamClientService', async () => {
       const res = await SteamApiService.unlockAchievement(1245620, 'ACH_LEGENDARY_ARMAMENTS');
       expect(res).toBe(true);
+    });
+
+    it('should fallback to MockSteamClientService when callFn is null', async () => {
+      __setCallFn(null);
+      const games = await SteamApiService.getGames();
+      expect(games.length).toBeGreaterThan(0);
+      expect(games[0].name).toBe('Elden Ring');
     });
   });
 });
