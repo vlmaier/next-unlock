@@ -34,7 +34,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    minify: false, // keep readable for transform verification
+    minify: false,
     lib: {
       entry: resolve(__dirname, 'src/index.tsx'),
       name: 'NextUnlock',
