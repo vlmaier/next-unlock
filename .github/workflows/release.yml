@@ -1,0 +1,44 @@
+name: Build & Release Decky Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Frontend Bundle
+        run: npm run build
+
+      - name: Create Plugin Zip Package
+        run: |
+          mkdir -p build_stage/next-unlock
+          cp -r dist backend main.py plugin.json package.json README.md pyproject.toml build_stage/next-unlock/
+          cd build_stage
+          zip -r ../next-unlock.zip next-unlock
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: next-unlock.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
