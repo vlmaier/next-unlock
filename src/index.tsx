@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy } from 'lucide-react';
+import { FaTrophy } from 'react-icons/fa';
 import { SteamApiService } from './services/steamApi';
 import { Game, RankedAchievements, ColorThemeId } from './types/achievement';
 import { FullDashboard } from './components/FullDashboard';
@@ -80,7 +81,7 @@ export const definePlugin = (serverApi?: any) => {
   return {
     title: <div className="font-bold text-sm flex items-center gap-2">Next Unlock</div>,
     content: <DeckyContent isQAM={true} serverApi={serverApi} />,
-    icon: <Trophy className="w-4 h-4" />,
+    icon: <FaTrophy />,
     onDismount() {},
   };
 };
