@@ -4,8 +4,14 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production'),
+    'process.env': '{}',
+    'global': 'window',
+  },
   build: {
     outDir: 'dist',
+    minify: true,
     lib: {
       entry: resolve(__dirname, 'src/index.tsx'),
       name: 'NextUnlock',
