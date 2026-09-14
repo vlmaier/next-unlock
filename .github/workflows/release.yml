@@ -21,10 +21,18 @@ jobs:
         with:
           node-version: 20
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
       - name: Install Dependencies
         run: npm install
 
-      - name: Build Frontend Bundle
+      - name: Run Automated Test Suites
+        run: npm test
+
+      - name: Build Plugin Bundle
         run: npm run build
 
       - name: Create Plugin Zip Package
