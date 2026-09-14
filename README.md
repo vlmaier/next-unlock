@@ -2,8 +2,6 @@
 
 > Smart achievement companion & progress dashboard for Steam Deck (Decky Loader plugin).
 
-**Author:** Vladas Maier
-
 ---
 
 ## Installation
