@@ -209,13 +209,16 @@ export class MockSteamClientService {
     });
   }
 
-  static getGames(): Promise<Game[]> {
+  static getGamesSync(): Game[] {
     this.updatePinnedStateOnGames();
-    // Return fresh clone so React detects array & object reference changes
-    return Promise.resolve(JSON.parse(JSON.stringify(mockGames)));
+    return JSON.parse(JSON.stringify(mockGames));
   }
 
-  static getGameDetails(appid: number): Promise<{ game: Game; ranked: RankedAchievements }> {
+  static getGames(): Promise<Game[]> {
+    return Promise.resolve(this.getGamesSync());
+  }
+
+  static getGameDetailsSync(appid: number): { game: Game; ranked: RankedAchievements } {
     this.updatePinnedStateOnGames();
     const targetGame = mockGames.find((g: Game) => g.appid === appid) || mockGames[0];
     const game = JSON.parse(JSON.stringify(targetGame));
@@ -251,7 +254,7 @@ export class MockSteamClientService {
 
     const sortedLocked = [...locked].sort((a, b) => (b.rec_score || 0) - (a.rec_score || 0));
 
-    return Promise.resolve({
+    return {
       game,
       ranked: {
         pinned,
@@ -262,7 +265,11 @@ export class MockSteamClientService {
         locked,
         unlocked,
       },
-    });
+    };
+  }
+
+  static getGameDetails(appid: number): Promise<{ game: Game; ranked: RankedAchievements }> {
+    return Promise.resolve(this.getGameDetailsSync(appid));
   }
 
   static togglePin(achievement_id: string): Promise<{ achievement_id: string; pinned: boolean }> {

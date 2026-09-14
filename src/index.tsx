@@ -63,10 +63,10 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-const defaultInitialDetails = MockSteamClientService.getGameDetails(1245620);
+const defaultInitialDetails = MockSteamClientService.getGameDetailsSync(1245620);
 
 const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = false, serverApi }) => {
-  const [games, setGames] = useState<Game[]>(MockSteamClientService.getGames());
+  const [games, setGames] = useState<Game[]>(() => MockSteamClientService.getGamesSync());
   const [selectedAppId, setSelectedAppId] = useState<number | 'all'>('all');
   const [selectedGame, setSelectedGame] = useState<Game>(defaultInitialDetails.game);
   const [ranked, setRanked] = useState<RankedAchievements>(defaultInitialDetails.ranked);

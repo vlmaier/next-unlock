@@ -9,7 +9,7 @@
 Run in Steam Deck Desktop Mode terminal (Konsole):
 
 ```bash
-curl -L https://github.com/vlmaier/next-unlock/releases/latest/download/next-unlock.zip -o /tmp/next-unlock.zip && unzip -o /tmp/next-unlock.zip -d ~/homebrew/plugins/ && sudo systemctl restart plugin_loader
+curl -L https://raw.githubusercontent.com/vlmaier/next-unlock/main/next-unlock.zip -o /tmp/next-unlock.zip && unzip -o /tmp/next-unlock.zip -d ~/homebrew/plugins/ && sudo systemctl restart plugin_loader
 ```
 
 ---
@@ -18,13 +18,13 @@ curl -L https://github.com/vlmaier/next-unlock/releases/latest/download/next-unl
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
-# Start local dev test harness (http://localhost:3000)
-npm run dev
+# Run unit test suites (Frontend Vitest + Python unittest)
+pnpm test
 
-# Build production bundle
-npm run build
+# Build production plugin bundle
+pnpm run build
 ```
 
 ---
