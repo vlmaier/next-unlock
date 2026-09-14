@@ -1,8 +1,13 @@
-import unittest
+import sys
 import os
+import unittest
 import tempfile
 import shutil
 import asyncio
+
+# Ensure project root is in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 from backend.mock_data import get_mock_games, get_mock_game_by_id
 from backend.recommendation import rank_achievements
 from main import Plugin
