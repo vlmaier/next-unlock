@@ -1,11 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { Trophy } from 'lucide-react';
+import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
+import { Trophy, AlertTriangle } from 'lucide-react';
 import { FaTrophy } from 'react-icons/fa';
 import { SteamApiService } from './services/steamApi';
 import { Game, RankedAchievements, ColorThemeId } from './types/achievement';
 import { FullDashboard } from './components/FullDashboard';
 import { QuickAccessMenu } from './components/QuickAccessMenu';
 import './index.css';
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = {
+    hasError: false,
+    error: null,
+  };
+
+  public static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[Next Unlock] Uncaught error:', error, errorInfo);
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 text-xs text-rose-300 bg-rose-950/40 border border-rose-800/60 rounded-xl flex flex-col gap-2 m-2">
+          <div className="flex items-center gap-2 font-bold text-rose-200">
+            <AlertTriangle className="w-4 h-4 text-rose-400" />
+            <span>Next Unlock Error</span>
+          </div>
+          <p className="text-[11px] text-rose-300/80 leading-relaxed">
+            {this.state.error?.message || 'An unexpected rendering error occurred.'}
+          </p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = false, serverApi }) => {
   const [games, setGames] = useState<Game[]>([]);
@@ -80,7 +122,11 @@ export const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ i
 export const definePlugin = (serverApi?: any) => {
   return {
     title: <div className="font-bold text-sm flex items-center gap-2">Next Unlock</div>,
-    content: <DeckyContent isQAM={true} serverApi={serverApi} />,
+    content: (
+      <ErrorBoundary>
+        <DeckyContent isQAM={true} serverApi={serverApi} />
+      </ErrorBoundary>
+    ),
     icon: <FaTrophy />,
     onDismount() {},
   };

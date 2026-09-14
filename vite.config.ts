@@ -3,11 +3,9 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react({ jsxRuntime: 'classic' })],
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
-    'process.env': '{}',
-    'global': 'window',
   },
   build: {
     outDir: 'dist',
@@ -18,11 +16,14 @@ export default defineConfig({
       fileName: () => 'index.js',
       formats: ['es'],
     },
-    // Bundle React & Lucide inline so Chrome/Decky Loader requires zero external importmaps
     rollupOptions: {
+      external: ['react', 'react-dom', 'react/jsx-runtime', 'decky-frontend-lib'],
       output: {
         format: 'es',
-        inlineDynamicImports: true,
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+        },
       },
     },
   },
