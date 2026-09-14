@@ -2,6 +2,7 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'rea
 import { Trophy, AlertTriangle } from 'lucide-react';
 import { FaTrophy } from 'react-icons/fa';
 import { SteamApiService } from './services/steamApi';
+import { MockSteamClientService } from './services/mockSteamClient';
 import { Game, RankedAchievements, ColorThemeId } from './types/achievement';
 import { FullDashboard } from './components/FullDashboard';
 import { QuickAccessMenu } from './components/QuickAccessMenu';
@@ -62,11 +63,13 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
+const defaultInitialDetails = MockSteamClientService.getGameDetails(1245620);
+
 const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = false, serverApi }) => {
-  const [games, setGames] = useState<Game[]>([]);
+  const [games, setGames] = useState<Game[]>(MockSteamClientService.getGames());
   const [selectedAppId, setSelectedAppId] = useState<number | 'all'>('all');
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
-  const [ranked, setRanked] = useState<RankedAchievements | null>(null);
+  const [selectedGame, setSelectedGame] = useState<Game>(defaultInitialDetails.game);
+  const [ranked, setRanked] = useState<RankedAchievements>(defaultInitialDetails.ranked);
   const [currentTheme, setCurrentTheme] = useState<ColorThemeId>('steam_slate');
 
   const loadData = async () => {
@@ -76,8 +79,10 @@ const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = 
 
       const activeId = selectedAppId === 'all' ? (gameList[0]?.appid || 1245620) : selectedAppId;
       const details = await SteamApiService.getGameDetails(activeId);
-      setSelectedGame(details.game);
-      setRanked(details.ranked);
+      if (details && details.game && details.ranked) {
+        setSelectedGame(details.game);
+        setRanked(details.ranked);
+      }
     } catch (err) {
       console.error('[Next Unlock] Error loading data:', err);
     }
@@ -96,15 +101,6 @@ const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = 
     await SteamApiService.unlockAchievement(appid, id);
     loadData();
   };
-
-  if (!selectedGame || !ranked) {
-    return (
-      <div className="p-4 text-xs text-slate-400 flex items-center gap-2">
-        <Trophy className="w-4 h-4 animate-spin text-[var(--accent-gold)]" />
-        <span>Loading Next Unlock...</span>
-      </div>
-    );
-  }
 
   return (
     <div data-theme={currentTheme} className="w-full min-h-screen bg-[var(--bg-primary)] text-[var(--text-main)] font-sans">
