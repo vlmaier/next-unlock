@@ -39,10 +39,13 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Run Automated Test Suites
+      - name: Run Frontend Tests (Vitest)
+        run: pnpm test
+
+      - name: Run Backend Tests (Python)
         env:
           PYTHONPATH: .
-        run: pnpm test
+        run: python3 -m unittest discover -s backend/tests -v
 
       - name: Build Plugin Bundle
         run: pnpm run build

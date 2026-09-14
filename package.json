@@ -1,13 +1,14 @@
 {
   "name": "next-unlock",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Next Unlock - Smart Achievement Tracker & Recommendation Engine for Steam Deck",
   "author": "Vladas Maier",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "rollup -c",
-    "test": "vitest run && PYTHONPATH=. python3 -m unittest discover -s backend/tests",
+    "test": "vitest run",
+    "test:python": "python3 -m unittest discover -s backend/tests",
     "preview": "vite preview"
   },
   "dependencies": {
