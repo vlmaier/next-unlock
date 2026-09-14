@@ -222,7 +222,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
         )}
 
         {/* Completion Progress Ring */}
-        <div className="flex items-center gap-4 bg-[var(--bg-primary)]/90 backdrop-blur px-5 py-3.5 rounded-xl border border-[var(--border-color)] shadow-inner">
+        <div className="flex items-center gap-4 bg-[var(--bg-primary)] backdrop-blur px-5 py-3.5 rounded-xl border border-[var(--border-color)] shadow-inner">
           <ProgressRing
             percentage={isAllGamesMode ? allGamesStats.completion : selectedGame.completion_percentage}
             unlockedCount={isAllGamesMode ? allGamesStats.unlockedAch : selectedGame.unlocked_count}

@@ -63,9 +63,9 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
     <div
       className={`next-card p-4 flex flex-col justify-between h-[195px] relative transition-all duration-200 ${
         achievement.is_pinned
-          ? 'border-[var(--accent-gold)]/60 bg-[var(--bg-card)]'
+          ? 'border-[var(--accent-gold)] bg-[var(--bg-card)]'
           : achievement.unlocked
-          ? 'border-[var(--border-color)] bg-[var(--bg-card)]/90'
+          ? 'border-[var(--border-color)] bg-[var(--bg-card)]'
           : 'hover:border-[var(--text-muted)]'
       } ${isUnlocking ? 'ring-2 ring-[var(--accent-emerald)] scale-[1.01]' : ''}`}
     >
@@ -146,7 +146,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
         </div>
 
         {/* Action Controls Footer (Theme Adaptive Colors) */}
-        <div className="flex items-center justify-between text-[11px] border-t border-[var(--border-color)]/70 pt-2">
+        <div className="flex items-center justify-between text-[11px] border-t border-[var(--border-color)] pt-2">
           <div className="flex items-center gap-3">
             {achievement.estimated_minutes && !achievement.unlocked && (
               <span className="flex items-center gap-1 text-[var(--text-muted)] font-medium">
