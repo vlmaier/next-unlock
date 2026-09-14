@@ -10,16 +10,20 @@ function deckyTransformPlugin(): Plugin {
       // Replace bare module imports of react and react-dom with SteamUI window.SP_REMOTES bindings
       newCode = newCode.replace(
         /import\s+([A-Za-z0-9_$]+)\s*,\s*\{([^}]+)\}\s*from\s*['"]react['"];?/g,
-        'const $1 = (typeof window !== "undefined" && window.SP_REMOTES?.react) || (typeof globalThis !== "undefined" && globalThis.React) || {}; const {$2} = $1;'
+        'const $1 = (typeof window !== "undefined" && window.SP_REMOTES?.react) || (typeof globalThis !== "undefined" && globalThis.React) || {}; const {$2} = $1; const forwardRef = $1.forwardRef || ((fn) => ((props) => fn(props, null)));'
       );
       newCode = newCode.replace(
         /import\s+([A-Za-z0-9_$]+)\s*from\s*['"]react['"];?/g,
-        'const $1 = (typeof window !== "undefined" && window.SP_REMOTES?.react) || (typeof globalThis !== "undefined" && globalThis.React) || {};'
+        'const $1 = (typeof window !== "undefined" && window.SP_REMOTES?.react) || (typeof globalThis !== "undefined" && globalThis.React) || {}; const forwardRef = $1.forwardRef || ((fn) => ((props) => fn(props, null)));'
       );
       newCode = newCode.replace(
         /import\s+([A-Za-z0-9_$]+)\s*from\s*['"]react-dom['"];?/g,
         'const $1 = (typeof window !== "undefined" && window.SP_REMOTES?.reactDOM) || (typeof globalThis !== "undefined" && globalThis.ReactDOM) || {};'
       );
+      // Strip any duplicate destructuring of forwardRef if present
+      newCode = newCode.replace(/const\s+\{\s*forwardRef\s*,/g, 'const {');
+      newCode = newCode.replace(/,\s*forwardRef\s*\}/g, '}');
+      newCode = newCode.replace(/,\s*forwardRef\s*,/g, ',');
       return { code: newCode, map: null };
     },
   };
