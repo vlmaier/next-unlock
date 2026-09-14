@@ -1,25 +1,30 @@
 import React, { useState, useEffect } from 'react';
+import { Trophy } from 'lucide-react';
 import { SteamApiService } from './services/steamApi';
 import { Game, RankedAchievements, ColorThemeId } from './types/achievement';
 import { FullDashboard } from './components/FullDashboard';
 import { QuickAccessMenu } from './components/QuickAccessMenu';
 import './index.css';
 
-export const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) => {
+export const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = false, serverApi }) => {
   const [games, setGames] = useState<Game[]>([]);
-  const [selectedAppId, setSelectedAppId] = useState<number | 'all'>(1245620);
+  const [selectedAppId, setSelectedAppId] = useState<number | 'all'>('all');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [ranked, setRanked] = useState<RankedAchievements | null>(null);
   const [currentTheme, setCurrentTheme] = useState<ColorThemeId>('steam_slate');
 
   const loadData = async () => {
-    const gameList = await SteamApiService.getGames();
-    setGames(gameList);
+    try {
+      const gameList = await SteamApiService.getGames();
+      setGames(gameList);
 
-    const activeId = selectedAppId === 'all' ? gameList[0].appid : selectedAppId;
-    const details = await SteamApiService.getGameDetails(activeId);
-    setSelectedGame(details.game);
-    setRanked(details.ranked);
+      const activeId = selectedAppId === 'all' ? (gameList[0]?.appid || 1245620) : selectedAppId;
+      const details = await SteamApiService.getGameDetails(activeId);
+      setSelectedGame(details.game);
+      setRanked(details.ranked);
+    } catch (err) {
+      console.error('[Next Unlock] Error loading data:', err);
+    }
   };
 
   useEffect(() => {
@@ -37,7 +42,12 @@ export const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) =
   };
 
   if (!selectedGame || !ranked) {
-    return <div className="p-4 text-xs text-slate-400">Loading Next Unlock...</div>;
+    return (
+      <div className="p-4 text-xs text-slate-400 flex items-center gap-2">
+        <Trophy className="w-4 h-4 animate-spin text-[var(--accent-gold)]" />
+        <span>Loading Next Unlock...</span>
+      </div>
+    );
   }
 
   return (
@@ -65,4 +75,14 @@ export const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) =
   );
 };
 
-export default DeckyContent;
+// Decky Loader Plugin Contract Function
+export const definePlugin = (serverApi?: any) => {
+  return {
+    title: <div className="font-bold text-sm flex items-center gap-2">Next Unlock</div>,
+    content: <DeckyContent isQAM={true} serverApi={serverApi} />,
+    icon: <Trophy className="w-4 h-4" />,
+    onDismount() {},
+  };
+};
+
+export default definePlugin;

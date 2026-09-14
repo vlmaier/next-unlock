@@ -1,9 +1,7 @@
 {
   "name": "Next Unlock",
   "author": "Vladas Maier",
-  "flags": [
-    "dev"
-  ],
+  "flags": [],
   "version": "1.0.0",
   "description": "Smart achievement tracking, progress dashboards, and 'Up Next' recommendations for Steam Deck.",
   "main": "main.py"

@@ -10,15 +10,13 @@ export default defineConfig({
       entry: resolve(__dirname, 'src/index.tsx'),
       name: 'NextUnlock',
       fileName: () => 'index.js',
-      formats: ['iife'],
+      formats: ['es'],
     },
+    // Bundle React & Lucide inline so Chrome/Decky Loader requires zero external importmaps
     rollupOptions: {
-      external: ['react', 'react-dom'],
       output: {
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-        },
+        format: 'es',
+        inlineDynamicImports: true,
       },
     },
   },
