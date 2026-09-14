@@ -67,7 +67,7 @@ importers:
         specifier: ^5.1.6
         version: 5.4.21
       vitest:
-        specifier: ^1.6.0
+        specifier: ^1.6.1
         version: 1.6.1(jsdom@30.0.1)
 
 packages:
