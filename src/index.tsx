@@ -7,6 +7,19 @@ import { FullDashboard } from './components/FullDashboard';
 import { QuickAccessMenu } from './components/QuickAccessMenu';
 import './index.css';
 
+// Ensure Decky Loader SP_JSX fallback compatibility
+if (typeof window !== 'undefined') {
+  const w = window as any;
+  if (!w.SP_JSX) {
+    const reactObj = w.SP_REACT || w.SP_REMOTES?.react || React;
+    w.SP_JSX = {
+      jsx: reactObj?.createElement || React.createElement,
+      jsxs: reactObj?.createElement || React.createElement,
+      Fragment: reactObj?.Fragment || 'div'
+    };
+  }
+}
+
 interface ErrorBoundaryProps {
   children: ReactNode;
 }
@@ -49,7 +62,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-export const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = false, serverApi }) => {
+const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = false, serverApi }) => {
   const [games, setGames] = useState<Game[]>([]);
   const [selectedAppId, setSelectedAppId] = useState<number | 'all'>('all');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -118,8 +131,8 @@ export const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ i
   );
 };
 
-// Decky Loader Plugin Contract Function
-export const definePlugin = (serverApi?: any) => {
+// Decky Loader Plugin Default Export
+export default function definePlugin(serverApi?: any) {
   return {
     title: <div className="font-bold text-sm flex items-center gap-2">Next Unlock</div>,
     content: (
@@ -130,6 +143,4 @@ export const definePlugin = (serverApi?: any) => {
     icon: <FaTrophy />,
     onDismount() {},
   };
-};
-
-export default definePlugin;
+}
