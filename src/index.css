@@ -1,0 +1,162 @@
+/* Designer-Curated UX Color Themes for Next Unlock */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* 1. Valve DeckOS Slate (Default - Authentic Steam Deck UI) */
+:root,
+[data-theme="steam_slate"] {
+  --bg-primary: #10141b;
+  --bg-surface: #181f2a;
+  --bg-card: #212b3a;
+  --bg-card-hover: #2a374a;
+  --border-color: #344359;
+  --text-main: #e2e8f0;
+  --text-muted: #8b9bb4;
+  --accent-primary: #389fff;
+  --accent-hover: #1e88e5;
+  --accent-gold: #d97706;
+  --accent-emerald: #10b981;
+  --accent-crimson: #e11d48;
+  --focus-ring: #389fff;
+  --badge-bg: #181f2a;
+}
+
+/* 2. PlayStation Platinum (PS5 Trophy Room) */
+[data-theme="aether_gold"] {
+  --bg-primary: #0e1017;
+  --bg-surface: #161924;
+  --bg-card: #1e2230;
+  --bg-card-hover: #272d3e;
+  --border-color: #323a50;
+  --text-main: #f1f5f9;
+  --text-muted: #8e99b0;
+  --accent-primary: #7986cb;
+  --accent-hover: #5c6bc0;
+  --accent-gold: #e5c07b;
+  --accent-emerald: #4ade80;
+  --accent-crimson: #f43f5e;
+  --focus-ring: #7986cb;
+  --badge-bg: #161924;
+}
+
+/* 3. GOG Galaxy Midnight (European Minimalist) */
+[data-theme="obsidian_matte"] {
+  --bg-primary: #121216;
+  --bg-surface: #1b1b22;
+  --bg-card: #24242d;
+  --bg-card-hover: #2e2e3a;
+  --border-color: #3b3b4a;
+  --text-main: #f8fafc;
+  --text-muted: #8b8b9e;
+  --accent-primary: #9b51e0;
+  --accent-hover: #822cd6;
+  --accent-gold: #d97706;
+  --accent-emerald: #10b981;
+  --accent-crimson: #e11d48;
+  --focus-ring: #9b51e0;
+  --badge-bg: #1b1b22;
+}
+
+/* 4. Nordic Espresso (Warm Terracotta & Stone) */
+[data-theme="emerald_tactical"] {
+  --bg-primary: #11100f;
+  --bg-surface: #1c1917;
+  --bg-card: #262320;
+  --bg-card-hover: #322e2a;
+  --border-color: #44403c;
+  --text-main: #f5f5f4;
+  --text-muted: #a8a29e;
+  --accent-primary: #d97706;
+  --accent-hover: #b45309;
+  --accent-gold: #f59e0b;
+  --accent-emerald: #10b981;
+  --accent-crimson: #f43f5e;
+  --focus-ring: #d97706;
+  --badge-bg: #1c1917;
+}
+
+/* 5. Stealth Monochrome (OLED Deep Charcoal & Dark Titanium) */
+[data-theme="nordic_frost"] {
+  --bg-primary: #000000;
+  --bg-surface: #09090b;
+  --bg-card: #121215;
+  --bg-card-hover: #1c1c21;
+  --border-color: #27272a;
+  --text-main: #f4f4f5;
+  --text-muted: #71717a;
+  --accent-primary: #3f3f46;
+  --accent-hover: #52525b;
+  --accent-gold: #d97706;
+  --accent-emerald: #10b981;
+  --accent-crimson: #e11d48;
+  --focus-ring: #52525b;
+  --badge-bg: #09090b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Tactile Card Container */
+.next-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.next-card:hover {
+  background-color: var(--bg-card-hover);
+  border-color: var(--text-muted);
+}
+
+/* Controller Focus Rings for Steam Deck Gaming Mode */
+.next-card:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Progress Ring SVG Animations */
+.progress-ring-circle {
+  transition: stroke-dashoffset 0.5s ease-in-out;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
