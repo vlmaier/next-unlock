@@ -25,7 +25,10 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   const countFontClass = isCompact ? 'text-[8px] font-semibold text-[var(--text-muted)] leading-none mt-0.5' : 'text-xs text-[var(--text-muted)] font-medium';
 
   return (
-    <div className="relative inline-flex items-center justify-center flex-shrink-0">
+    <div
+      className="relative inline-flex items-center justify-center flex-shrink-0"
+      style={{ position: 'relative', width: size, height: size }}
+    >
       <svg width={size} height={size} className="transform -rotate-90">
         {/* Background Track Circle */}
         <circle
@@ -50,7 +53,20 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
           className="transition-all duration-700 ease-out"
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-1">
+      <div
+        className="absolute inset-0 flex flex-col items-center justify-center text-center p-1"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <span className={`${pctFontClass} text-[var(--text-main)]`}>
           {Math.round(percentage)}%
         </span>

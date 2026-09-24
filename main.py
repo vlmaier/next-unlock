@@ -8,7 +8,7 @@ import json
 import logging
 from backend.mock_data import get_mock_games, get_mock_game_by_id
 from backend.recommendation import rank_achievements
-from backend.achievement_parser import parse_local_user_stats
+from backend.achievement_parser import get_installed_games, parse_local_user_stats
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("NextUnlock")
@@ -46,13 +46,22 @@ class Plugin:
         logger.info("Next Unlock Plugin unloading.")
 
     async def get_games(self):
-        """Returns list of user's active games with achievement progress."""
+        """Returns list of user's installed games from Steam library, or mock data if none detected."""
+        installed = get_installed_games()
+        if installed:
+            return installed
         return get_mock_games()
 
     async def get_game_details(self, appid: int):
-        """Returns full achievement details for a specific game."""
+        """Returns achievement details for a specific game."""
+        # Check installed games first
+        for g in get_installed_games():
+            if g["appid"] == int(appid):
+                ranked = rank_achievements(g.get("achievements", []), self.pinned_achievements)
+                return {"game": g, "ranked": ranked}
+
         game = get_mock_game_by_id(appid)
-        ranked = rank_achievements(game["achievements"], self.pinned_achievements)
+        ranked = rank_achievements(game.get("achievements", []), self.pinned_achievements)
         return {
             "game": game,
             "ranked": ranked

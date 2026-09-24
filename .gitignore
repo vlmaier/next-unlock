@@ -6,7 +6,9 @@ node_modules/
 dist/
 build/
 build_stage/
+src/generated.css
 *.egg-info/
+*.zip
 
 # Python
 __pycache__/

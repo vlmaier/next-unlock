@@ -1,12 +1,12 @@
 import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { Trophy, AlertTriangle } from 'lucide-react';
 import { FaTrophy } from 'react-icons/fa';
-import { SteamApiService } from './services/steamApi';
+import { SteamApiService, getActiveApp } from './services/steamApi';
 import { MockSteamClientService } from './services/mockSteamClient';
 import { Game, RankedAchievements, ColorThemeId } from './types/achievement';
 import { FullDashboard } from './components/FullDashboard';
 import { QuickAccessMenu } from './components/QuickAccessMenu';
-import './index.css';
+import './generated.css';
 
 // Ensure Decky Loader SP_JSX fallback compatibility
 if (typeof window !== 'undefined') {
@@ -74,11 +74,20 @@ const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = 
 
   const loadData = async () => {
     try {
+      const active = getActiveApp();
       const gameList = await SteamApiService.getGames();
       setGames(gameList);
 
-      const activeId = selectedAppId === 'all' ? (gameList[0]?.appid || 1245620) : selectedAppId;
-      const details = await SteamApiService.getGameDetails(activeId);
+      let targetId: number;
+      if (selectedAppId !== 'all') {
+        targetId = selectedAppId;
+      } else if (active) {
+        targetId = active.appid;
+      } else {
+        targetId = gameList[0]?.appid || 1245620;
+      }
+
+      const details = await SteamApiService.getGameDetails(targetId);
       if (details && details.game && details.ranked) {
         setSelectedGame(details.game);
         setRanked(details.ranked);
@@ -102,12 +111,18 @@ const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = 
     loadData();
   };
 
+  const activeApp = getActiveApp();
+  const isRunning = !!(activeApp && activeApp.appid === selectedGame.appid);
+
   return (
     <div data-theme={currentTheme} className="w-full min-h-screen bg-[var(--bg-primary)] text-[var(--text-main)] font-sans">
       {isQAM ? (
         <QuickAccessMenu
           game={selectedGame}
           ranked={ranked}
+          games={games}
+          isRunningGame={isRunning}
+          onSelectGame={(id) => setSelectedAppId(id)}
           onTogglePin={handleTogglePin}
         />
       ) : (
