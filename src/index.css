@@ -1,6 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+[data-theme] {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  color: var(--text-main);
+}
+
+[data-theme] * {
+  box-sizing: border-box;
+}
+
+[data-theme] h1, [data-theme] h2, [data-theme] h3, [data-theme] h4, [data-theme] p, [data-theme] span, [data-theme] button, [data-theme] input {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+}
 
 /* 1. Valve DeckOS Slate (Default - Authentic Steam Deck UI) */
 :root,

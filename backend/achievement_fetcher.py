@@ -8,6 +8,7 @@ import os
 import re
 import json
 import html
+import ssl
 import urllib.request
 import logging
 from typing import List, Dict, Any, Optional
@@ -15,40 +16,62 @@ from typing import List, Dict, Any, Optional
 logger = logging.getLogger("NextUnlock.Fetcher")
 
 CACHE_DIR = os.path.expanduser("~/.config/next-unlock/cache")
+BUNDLED_CACHE_DIR = os.path.join(os.path.dirname(__file__), "bundled_cache")
 
 
 def get_cache_path(appid: int) -> str:
     return os.path.join(CACHE_DIR, f"achievements_{appid}.json")
 
 
-def load_cached_achievements(appid: int) -> Optional[List[Dict[str, Any]]]:
+def load_cached_achievements(appid: int) -> Optional[Dict[str, Any]]:
+    # 1. Try bundled cache directory first (instant, 0ms, works offline)
+    bundled_path = os.path.join(BUNDLED_CACHE_DIR, f"achievements_{appid}.json")
+    if os.path.isfile(bundled_path):
+        try:
+            with open(bundled_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict) and data.get("achievements"):
+                    return data
+                elif isinstance(data, list) and len(data) > 0:
+                    return {"game_title": None, "achievements": data}
+        except Exception as e:
+            logger.debug(f"Failed loading bundled cache for appid {appid}: {e}")
+
+    # 2. Try user persistent cache
     try:
         path = get_cache_path(appid)
         if os.path.isfile(path):
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if isinstance(data, list) and len(data) > 0:
+                if isinstance(data, dict) and data.get("achievements"):
                     return data
+                elif isinstance(data, list) and len(data) > 0:
+                    return {"game_title": None, "achievements": data}
     except Exception as e:
         logger.debug(f"Failed loading cache for appid {appid}: {e}")
     return None
 
 
-def save_cached_achievements(appid: int, achievements: List[Dict[str, Any]]) -> None:
+def save_cached_achievements(appid: int, data: Dict[str, Any]) -> None:
     try:
         os.makedirs(CACHE_DIR, exist_ok=True)
         path = get_cache_path(appid)
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(achievements, f)
+            json.dump(data, f)
     except Exception as e:
         logger.debug(f"Failed saving cache for appid {appid}: {e}")
 
 
-def fetch_achievements_from_steam(appid: int) -> List[Dict[str, Any]]:
+def fetch_achievements_from_steam(appid: int) -> Dict[str, Any]:
     """
     Fetches public achievement list, names, descriptions, icons, and unlock percentages
     from Steam Community. Works for any Steam game including Family Shared games.
     """
+    # Check cache first for instant response
+    cached = load_cached_achievements(appid)
+    if cached and cached.get("achievements"):
+        return cached
+
     url = f"https://steamcommunity.com/stats/{appid}/achievements/"
     req = urllib.request.Request(
         url,
@@ -59,7 +82,19 @@ def fetch_achievements_from_steam(appid: int) -> List[Dict[str, Any]]:
     )
 
     try:
-        html_bytes = urllib.request.urlopen(req, timeout=4).read()
+        # Create SSL context that does not fail on Linux/SteamOS missing root CA bundles
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
+    except Exception:
+        ssl_ctx = None
+
+    try:
+        if ssl_ctx:
+            response = urllib.request.urlopen(req, timeout=8, context=ssl_ctx)
+        else:
+            response = urllib.request.urlopen(req, timeout=8)
+        html_bytes = response.read()
         content = html_bytes.decode("utf-8", errors="ignore")
 
         rows = re.findall(r'<div class="achieveRow ">(.*?)<div style="clear: both;">', content, re.DOTALL)

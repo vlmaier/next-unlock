@@ -64,39 +64,32 @@ class Plugin:
         return installed if installed else []
 
     async def get_game_details(self, appid: int):
-        """Returns achievement details for a specific game, fetching from Steam if needed."""
+        """Returns achievement details for a specific game, fetching from Steam/cache if needed."""
         appid_int = int(appid)
-        target_game = None
-        for g in get_installed_games():
-            if g["appid"] == appid_int:
-                target_game = dict(g)
-                break
+        fetched = fetch_achievements_from_steam(appid_int)
+        achievements = fetched.get("achievements", [])
+        game_title = fetched.get("game_title") or f"App {appid_int}"
 
-        if not target_game:
-            target_game = {
-                "appid": appid_int,
-                "name": f"App {appid_int}",
-                "header_image": f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid_int}/header.jpg",
-                "total_achievements": 0,
-                "unlocked_count": 0,
-                "completion_percentage": 0.0,
-                "achievements": [],
-            }
+        # If name is unknown, try quick check in installed games
+        if game_title.startswith("App "):
+            for g in get_installed_games():
+                if g["appid"] == appid_int and g.get("name"):
+                    game_title = g["name"]
+                    break
 
-        achievements = target_game.get("achievements")
-        if not achievements:
-            fetched = fetch_achievements_from_steam(appid_int)
-            achievements = fetched.get("achievements", [])
-            if fetched.get("game_title") and (target_game["name"].startswith("App ") or target_game["name"].startswith("Running Game")):
-                target_game["name"] = fetched["game_title"]
-
-        target_game["achievements"] = achievements
-        target_game["total_achievements"] = len(achievements)
         unlocked_count = sum(1 for a in achievements if a.get("unlocked"))
-        target_game["unlocked_count"] = unlocked_count
-        target_game["completion_percentage"] = (
-            round((unlocked_count / len(achievements)) * 100, 1) if achievements else 0.0
-        )
+        total = len(achievements)
+        pct = round((unlocked_count / total) * 100, 1) if total > 0 else 0.0
+
+        target_game = {
+            "appid": appid_int,
+            "name": game_title,
+            "header_image": f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid_int}/header.jpg",
+            "total_achievements": total,
+            "unlocked_count": unlocked_count,
+            "completion_percentage": pct,
+            "achievements": achievements,
+        }
 
         ranked = rank_achievements(achievements, self.pinned_achievements)
         return {"game": target_game, "ranked": ranked}

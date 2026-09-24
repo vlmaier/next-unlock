@@ -10,7 +10,7 @@ import './index.css';
 
 const HarnessApp: React.FC = () => {
   const [games, setGames] = useState<Game[]>([]);
-  const [selectedAppId, setSelectedAppId] = useState<number | 'all'>(2062430);
+  const [selectedAppId, setSelectedAppId] = useState<number | 'all'>('all');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [ranked, setRanked] = useState<RankedAchievements | null>(null);
   const [currentTheme, setCurrentTheme] = useState<ColorThemeId>('steam_slate');
@@ -28,13 +28,15 @@ const HarnessApp: React.FC = () => {
     }
     setGames(gameList);
 
-    const activeId = appid === 'all' ? (gameList[0]?.appid || 2062430) : appid;
-    let details = await SteamApiService.getGameDetails(activeId);
-    if (!details || !details.game || details.game.total_achievements === 0) {
-      details = await MockSteamClientService.getGameDetails(activeId);
+    const activeId = appid === 'all' ? gameList[0]?.appid : appid;
+    if (activeId) {
+      let details = await SteamApiService.getGameDetails(activeId);
+      if (!details || !details.game || details.game.total_achievements === 0) {
+        details = await MockSteamClientService.getGameDetails(activeId);
+      }
+      setSelectedGame(details.game);
+      setRanked(details.ranked);
     }
-    setSelectedGame(details.game);
-    setRanked(details.ranked);
   };
 
   useEffect(() => {

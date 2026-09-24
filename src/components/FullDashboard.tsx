@@ -44,12 +44,22 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
     let allAchievementsList: (Achievement & { gameName?: string; appid?: number })[] = [];
 
     games.forEach((g) => {
-      totalAch += g.total_achievements;
-      unlockedAch += g.unlocked_count;
-      g.achievements.forEach((a) => {
+      totalAch += (g.total_achievements || 0);
+      unlockedAch += (g.unlocked_count || 0);
+      (g.achievements || []).forEach((a) => {
         allAchievementsList.push({ ...a, gameName: g.name, appid: g.appid });
       });
     });
+
+    if (allAchievementsList.length === 0 && selectedGame && (selectedGame.achievements?.length || 0) > 0) {
+      totalAch = selectedGame.total_achievements;
+      unlockedAch = selectedGame.unlocked_count;
+      allAchievementsList = (selectedGame.achievements || []).map((a) => ({
+        ...a,
+        gameName: selectedGame.name,
+        appid: selectedGame.appid,
+      }));
+    }
 
     const completion = totalAch > 0 ? (unlockedAch / totalAch) * 100 : 0;
     return {
@@ -58,7 +68,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
       completion,
       achievements: allAchievementsList,
     };
-  }, [games]);
+  }, [games, selectedGame]);
 
   // Compute category counts
   const counts = useMemo(() => {

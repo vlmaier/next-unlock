@@ -90,8 +90,140 @@ import {
 import { definePlugin, routerHook } from '@decky/api';
 
 const FullDashboardPage: React.FC = () => {
+  const syncActive = getActiveApp();
   const [games, setGames] = useState<Game[]>([]);
-  const [selectedAppId, setSelectedAppId] = useState<number | 'all'>('all');
+  const [selectedAppId, setSelectedAppId] = useState<number | 'all'>(() => syncActive?.appid || 'all');
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [ranked, setRanked] = useState<RankedAchievements | null>(null);
+  const [currentTheme, setCurrentTheme] = useState<ColorThemeId>('steam_slate');
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const loadData = async (targetIdInput?: number | 'all') => {
+    try {
+      const active = await getActiveAppAsync() || getActiveApp();
+      const gameList = await SteamApiService.getGames();
+
+      let targetId: number | null = null;
+      if (targetIdInput && targetIdInput !== 'all') {
+        targetId = targetIdInput;
+      } else if (selectedAppId !== 'all') {
+        targetId = selectedAppId;
+      } else if (active) {
+        targetId = active.appid;
+      } else if (gameList.length > 0) {
+        targetId = gameList[0].appid;
+      }
+
+      if (targetId) {
+        const details = await SteamApiService.getGameDetails(targetId);
+
+        const mergedGames = [...gameList];
+        const existingIdx = mergedGames.findIndex((g) => g.appid === targetId);
+        if (existingIdx >= 0) {
+          mergedGames[existingIdx] = { ...mergedGames[existingIdx], ...details.game };
+        } else {
+          mergedGames.unshift(details.game);
+        }
+
+        setGames(mergedGames);
+        setSelectedGame(details.game);
+        setRanked(details.ranked);
+      } else {
+        setGames(gameList);
+        setSelectedGame(null);
+        setRanked(null);
+      }
+    } catch (e) {
+      console.error('[Next Unlock] Error loading dashboard:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData(selectedAppId);
+  }, [selectedAppId]);
+
+  const handleTogglePin = async (id: string) => {
+    await SteamApiService.togglePin(id);
+    loadData(selectedAppId);
+  };
+
+  const handleUnlock = async (appid: number, id: string) => {
+    await SteamApiService.unlockAchievement(appid, id);
+    loadData(selectedAppId);
+  };
+
+  return (
+    <div
+      data-theme={currentTheme}
+      style={{
+        width: '100%',
+        minHeight: '100vh',
+        backgroundColor: '#0e141d',
+        color: '#e2e8f0',
+        padding: '24px 32px',
+        overflowY: 'auto',
+        boxSizing: 'border-box',
+        fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+      }}
+      className="w-full min-h-screen bg-[var(--bg-primary,#0e141d)] text-[var(--text-main,#e2e8f0)] p-6 overflow-y-auto font-sans"
+    >
+      <style dangerouslySetInnerHTML={{ __html: typeof cssText === 'string' ? cssText : '' }} />
+      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Sleek Steam Deck Header Bar with Quick Exit */}
+        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-sky-400" />
+            <span className="font-extrabold text-base text-slate-100 tracking-tight">Next Unlock</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 ml-2">
+              Full Dashboard
+            </span>
+          </div>
+
+          <button
+            onClick={() => {
+              try {
+                Navigation.NavigateBack();
+              } catch {
+                window.history.back();
+              }
+            }}
+            className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 hover:text-white rounded-lg border border-slate-700 text-xs font-bold transition-all cursor-pointer shadow-sm"
+          >
+            ← Back to Game
+          </button>
+        </div>
+
+        {selectedGame && ranked ? (
+          <FullDashboard
+            games={games}
+            selectedAppId={selectedAppId}
+            selectedGame={selectedGame}
+            ranked={ranked}
+            onSelectGame={(id) => {
+              setSelectedAppId(id);
+              if (id !== 'all') loadData(id);
+            }}
+            onTogglePin={handleTogglePin}
+            onUnlockAchievement={handleUnlock}
+            currentTheme={currentTheme}
+            onThemeChange={setCurrentTheme}
+          />
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '100px 0' }}>
+            <SteamSpinner />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const DeckyContent: React.FC = () => {
+  const syncActive = getActiveApp();
+  const [games, setGames] = useState<Game[]>([]);
+  const [selectedAppId, setSelectedAppId] = useState<number | 'all'>(() => syncActive?.appid || 'all');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [ranked, setRanked] = useState<RankedAchievements | null>(null);
   const [currentTheme, setCurrentTheme] = useState<ColorThemeId>('steam_slate');
@@ -99,10 +231,9 @@ const FullDashboardPage: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const active = await getActiveAppAsync() || getActiveApp();
+      const active = await getActiveAppAsync() || syncActive;
       const gameList = await SteamApiService.getGames();
-      setGames(gameList);
-
+      
       let targetId: number | null = null;
       if (selectedAppId !== 'all') {
         targetId = selectedAppId;
@@ -114,142 +245,22 @@ const FullDashboardPage: React.FC = () => {
 
       if (targetId) {
         const details = await SteamApiService.getGameDetails(targetId);
-        if (details && details.game) {
-          setSelectedGame(details.game);
-          setRanked(details.ranked);
+
+        const mergedGames = [...gameList];
+        const existingIdx = mergedGames.findIndex((g) => g.appid === targetId);
+        if (existingIdx >= 0) {
+          mergedGames[existingIdx] = { ...mergedGames[existingIdx], ...details.game };
+        } else {
+          mergedGames.unshift(details.game);
         }
-      }
-    } catch (e) {
-      console.error('[Next Unlock] Error loading dashboard:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
+        setGames(mergedGames);
 
-  useEffect(() => {
-    loadData();
-  }, [selectedAppId]);
-
-  const handleTogglePin = async (id: string) => {
-    await SteamApiService.togglePin(id);
-    loadData();
-  };
-
-  const handleUnlock = async (appid: number, id: string) => {
-    await SteamApiService.unlockAchievement(appid, id);
-    loadData();
-  };
-
-  return (
-    <div
-      data-theme={currentTheme}
-      style={{
-        width: '100%',
-        minHeight: '100vh',
-        background: '#0e141d',
-        color: '#e2e8f0',
-        padding: '24px 32px',
-        overflowY: 'auto',
-        boxSizing: 'border-box',
-      }}
-      className="w-full min-h-screen bg-[var(--bg-primary,#0e141d)] text-[var(--text-main,#e2e8f0)] p-6 overflow-y-auto"
-    >
-      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <PanelSection>
-          <PanelSectionRow>
-            <ButtonItem
-              layout="below"
-              onClick={() => {
-                try {
-                  Navigation.NavigateBack();
-                } catch {
-                  window.history.back();
-                }
-              }}
-            >
-              ← Back to Game
-            </ButtonItem>
-          </PanelSectionRow>
-        </PanelSection>
-
-        {selectedGame && ranked ? (
-          <FullDashboard
-            games={games}
-            selectedAppId={selectedAppId}
-            selectedGame={selectedGame}
-            ranked={ranked}
-            onSelectGame={(id) => setSelectedAppId(id)}
-            onTogglePin={handleTogglePin}
-            onUnlockAchievement={handleUnlock}
-            currentTheme={currentTheme}
-            onThemeChange={setCurrentTheme}
-          />
-        ) : (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
-            <SteamSpinner />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const DeckyContent: React.FC = () => {
-  const [games, setGames] = useState<Game[]>([]);
-  const [selectedAppId, setSelectedAppId] = useState<number | 'all'>('all');
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
-  const [ranked, setRanked] = useState<RankedAchievements | null>(null);
-  const [currentTheme, setCurrentTheme] = useState<ColorThemeId>('steam_slate');
-  const [loading, setLoading] = useState<boolean>(true);
-
-  const loadData = async () => {
-    try {
-      const syncActive = getActiveApp();
-      if (syncActive) {
-        setSelectedGame((prev) => prev && prev.appid === syncActive.appid ? prev : {
-          appid: syncActive.appid,
-          name: syncActive.name,
-          header_image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${syncActive.appid}/header.jpg`,
-          total_achievements: 0,
-          unlocked_count: 0,
-          completion_percentage: 0,
-          achievements: [],
-        });
-      }
-
-      const active = await getActiveAppAsync() || syncActive;
-      const gameList = await SteamApiService.getGames();
-      
-      const mergedGames = [...gameList];
-      if (active && !mergedGames.some((g) => g.appid === active.appid)) {
-        mergedGames.unshift({
-          appid: active.appid,
-          name: active.name,
-          header_image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${active.appid}/header.jpg`,
-          total_achievements: 0,
-          unlocked_count: 0,
-          completion_percentage: 0,
-          achievements: [],
-        });
-      }
-      setGames(mergedGames);
-
-      let targetId: number | null = null;
-      if (selectedAppId !== 'all') {
-        targetId = selectedAppId;
-      } else if (active) {
-        targetId = active.appid;
-      } else if (mergedGames.length > 0) {
-        targetId = mergedGames[0].appid;
-      }
-
-      if (targetId) {
-        const details = await SteamApiService.getGameDetails(targetId);
-        if (details && details.game) {
+        if (details && details.game && details.game.total_achievements > 0) {
           setSelectedGame(details.game);
           setRanked(details.ranked);
         }
       } else {
+        setGames(gameList);
         setSelectedGame(null);
         setRanked(null);
       }
@@ -316,6 +327,7 @@ const DeckyContent: React.FC = () => {
 
   return (
     <div data-theme={currentTheme} className="w-full">
+      <style dangerouslySetInnerHTML={{ __html: typeof cssText === 'string' ? cssText : '' }} />
       <QuickAccessMenu
         game={selectedGame}
         ranked={ranked}

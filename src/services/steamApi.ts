@@ -52,7 +52,7 @@ export async function getActiveAppAsync(): Promise<{ appid: number; name: string
   try {
     const callFn = await getCallFn();
     if (callFn) {
-      const res = await withTimeout(callFn('get_active_app'), 1000, null);
+      const res = await withTimeout(callFn('get_active_app'), 5000, null);
       const data = res && res.result ? res.result : res;
       if (data && data.appid) {
         return {
@@ -152,7 +152,7 @@ export class SteamApiService {
     try {
       const callFn = await getCallFn();
       if (callFn) {
-        const res = await withTimeout(callFn('get_games'), 1500, null);
+        const res = await withTimeout(callFn('get_games'), 5000, null);
         const data = res && res.result ? res.result : res;
         if (Array.isArray(data) && data.length > 0) {
           const active = await getActiveAppAsync();
@@ -201,7 +201,21 @@ export class SteamApiService {
   }
 
   static async getGameDetails(appid: number): Promise<{ game: Game; ranked: RankedAchievements }> {
-    // 1. Try querying SteamClient.Apps directly (native SteamOS Client)
+    // 1. Try Decky RPC backend first (Python fetcher has local cached achievements)
+    try {
+      const callFn = await getCallFn();
+      if (callFn) {
+        const res = await withTimeout(callFn('get_game_details', appid), 10000, null);
+        const data = res && res.result ? res.result : res;
+        if (data && data.game && data.game.total_achievements > 0) {
+          return data;
+        }
+      }
+    } catch (e) {
+      console.warn('[Next Unlock] RPC get_game_details error:', e);
+    }
+
+    // 2. Try querying SteamClient.Apps directly (native SteamOS Client)
     if (typeof window !== 'undefined') {
       const w = window as any;
       const getAchFn = w.SteamClient?.Apps?.GetMyAchievementsForApp;
@@ -209,11 +223,11 @@ export class SteamApiService {
         try {
           const res = await withTimeout(
             Promise.resolve(getAchFn(appid.toString())),
-            1500,
+            3000,
             null
           );
           const rawList = res?.data?.rgAchievements || res?.rgAchievements;
-          if (Array.isArray(rawList)) {
+          if (Array.isArray(rawList) && rawList.length > 0) {
             const achievements = rawList.map((a: any) => formatSteamAchievement(a, appid));
             const total = achievements.length;
             const unlocked = achievements.filter((a) => a.unlocked).length;
@@ -240,22 +254,10 @@ export class SteamApiService {
       }
     }
 
-    // 2. Try Decky RPC backend
-    try {
-      const callFn = await getCallFn();
-      if (!callFn) throw new Error('No Decky API');
-      const res = await withTimeout(callFn('get_game_details', appid), 1500, null);
-      const data = res && res.result ? res.result : res;
-      if (data && data.game && data.ranked) {
-        return data;
-      }
-    } catch (e) {
-      console.warn('[Next Unlock] RPC get_game_details error:', e);
-    }
-
-    // 3. In test mode, fallback to MockSteamClientService for vitest
-    if (process.env.NODE_ENV === 'test') {
-      return MockSteamClientService.getGameDetails(appid);
+    // 3. Fallback to MockSteamClientService if available (or in test mode)
+    const mockDetails = await MockSteamClientService.getGameDetails(appid);
+    if (mockDetails && mockDetails.game && mockDetails.game.total_achievements > 0) {
+      return mockDetails;
     }
 
     // 4. Default clean empty state for this appid
