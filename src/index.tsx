@@ -1,8 +1,7 @@
 import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { Trophy, AlertTriangle } from 'lucide-react';
 import { FaTrophy } from 'react-icons/fa';
-import { SteamApiService, getActiveApp } from './services/steamApi';
-import { MockSteamClientService } from './services/mockSteamClient';
+import { SteamApiService, getActiveApp, getActiveAppAsync } from './services/steamApi';
 import { Game, RankedAchievements, ColorThemeId } from './types/achievement';
 import { FullDashboard } from './components/FullDashboard';
 import { QuickAccessMenu } from './components/QuickAccessMenu';
@@ -77,37 +76,66 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-const defaultInitialDetails = MockSteamClientService.getGameDetailsSync(1245620);
+import {
+  PanelSection,
+  PanelSectionRow,
+  SteamSpinner,
+  Field,
+  ButtonItem,
+  staticClasses,
+} from '@decky/ui';
+import { definePlugin } from '@decky/api';
 
-const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = false, serverApi }) => {
-  const [games, setGames] = useState<Game[]>(() => MockSteamClientService.getGamesSync());
+const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) => {
+  const [games, setGames] = useState<Game[]>([]);
   const [selectedAppId, setSelectedAppId] = useState<number | 'all'>('all');
-  const [selectedGame, setSelectedGame] = useState<Game>(defaultInitialDetails.game);
-  const [ranked, setRanked] = useState<RankedAchievements>(defaultInitialDetails.ranked);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [ranked, setRanked] = useState<RankedAchievements | null>(null);
   const [currentTheme, setCurrentTheme] = useState<ColorThemeId>('steam_slate');
+  const [loading, setLoading] = useState<boolean>(true);
 
   const loadData = async () => {
     try {
-      const active = getActiveApp();
+      const active = await getActiveAppAsync();
       const gameList = await SteamApiService.getGames();
-      setGames(gameList);
+      
+      const mergedGames = [...gameList];
+      if (active && !mergedGames.some((g) => g.appid === active.appid)) {
+        mergedGames.unshift({
+          appid: active.appid,
+          name: active.name,
+          header_image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${active.appid}/header.jpg`,
+          total_achievements: 0,
+          unlocked_count: 0,
+          completion_percentage: 0,
+          achievements: [],
+        });
+      }
+      setGames(mergedGames);
 
-      let targetId: number;
+      let targetId: number | null = null;
       if (selectedAppId !== 'all') {
         targetId = selectedAppId;
       } else if (active) {
         targetId = active.appid;
-      } else {
-        targetId = gameList[0]?.appid || 1245620;
+      } else if (mergedGames.length > 0) {
+        targetId = mergedGames[0].appid;
       }
 
-      const details = await SteamApiService.getGameDetails(targetId);
-      if (details && details.game && details.ranked) {
-        setSelectedGame(details.game);
-        setRanked(details.ranked);
+      if (targetId) {
+        const details = await SteamApiService.getGameDetails(targetId);
+        if (details && details.game) {
+          setSelectedGame(details.game);
+          setRanked(details.ranked);
+        }
+      } else {
+        setSelectedGame(null);
+        setRanked(null);
       }
     } catch (err) {
       console.error('[Next Unlock] Error loading data:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -126,10 +154,22 @@ const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = 
   };
 
   const activeApp = getActiveApp();
-  const isRunning = !!(activeApp && activeApp.appid === selectedGame.appid);
+  const isRunning = !!(activeApp && selectedGame && activeApp.appid === selectedGame.appid);
+
+  if (loading && !selectedGame) {
+    return (
+      <PanelSection>
+        <PanelSectionRow>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0', width: '100%' }}>
+            <SteamSpinner />
+          </div>
+        </PanelSectionRow>
+      </PanelSection>
+    );
+  }
 
   return (
-    <div data-theme={currentTheme} className="w-full min-h-screen bg-[var(--bg-primary)] text-[var(--text-main)] font-sans">
+    <div data-theme={currentTheme} className="w-full">
       {isQAM ? (
         <QuickAccessMenu
           game={selectedGame}
@@ -138,8 +178,9 @@ const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = 
           isRunningGame={isRunning}
           onSelectGame={(id) => setSelectedAppId(id)}
           onTogglePin={handleTogglePin}
+          onRefresh={loadData}
         />
-      ) : (
+      ) : selectedGame && ranked ? (
         <FullDashboard
           games={games}
           selectedAppId={selectedAppId}
@@ -151,21 +192,29 @@ const DeckyContent: React.FC<{ isQAM?: boolean; serverApi?: any }> = ({ isQAM = 
           currentTheme={currentTheme}
           onThemeChange={setCurrentTheme}
         />
+      ) : (
+        <PanelSection title="Next Unlock">
+          <PanelSectionRow>
+            <Field label="No Active Game" description="Launch a game on Steam to track achievements." />
+          </PanelSectionRow>
+        </PanelSection>
       )}
     </div>
   );
 };
 
-// Decky Loader Plugin Default Export
-export default function definePlugin(serverApi?: any) {
+// Decky Loader Plugin Default Export matching official template
+export default definePlugin(() => {
   return {
-    title: <div className="font-bold text-sm flex items-center gap-2">Next Unlock</div>,
+    name: 'Next Unlock',
+    title: <div className={staticClasses?.Title || 'font-bold text-sm'}>Next Unlock</div>,
+    titleView: <div className={staticClasses?.Title || 'font-bold text-sm'}>Next Unlock</div>,
     content: (
       <ErrorBoundary>
-        <DeckyContent isQAM={true} serverApi={serverApi} />
+        <DeckyContent isQAM={true} />
       </ErrorBoundary>
     ),
     icon: <FaTrophy />,
     onDismount() {},
   };
-}
+});

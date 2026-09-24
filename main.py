@@ -45,26 +45,50 @@ class Plugin:
     async def _unload(self):
         logger.info("Next Unlock Plugin unloading.")
 
-    async def get_games(self):
-        """Returns list of user's installed games from Steam library, or mock data if none detected."""
+    async def get_active_app(self):
+        """Detects currently running game via /proc environ SteamAppId inspection."""
+        from backend.achievement_parser import get_running_steam_appid
+        appid = get_running_steam_appid()
+        if not appid:
+            return None
         installed = get_installed_games()
-        if installed:
-            return installed
-        return get_mock_games()
+        for g in installed:
+            if g["appid"] == appid:
+                return {"appid": appid, "name": g["name"]}
+        return {"appid": appid, "name": f"App {appid}"}
+
+    async def get_games(self):
+        """Returns list of user's installed games from Steam library."""
+        installed = get_installed_games()
+        return installed if installed else []
 
     async def get_game_details(self, appid: int):
         """Returns achievement details for a specific game."""
-        # Check installed games first
-        for g in get_installed_games():
+        installed = get_installed_games()
+        for g in installed:
             if g["appid"] == int(appid):
                 ranked = rank_achievements(g.get("achievements", []), self.pinned_achievements)
                 return {"game": g, "ranked": ranked}
 
-        game = get_mock_game_by_id(appid)
-        ranked = rank_achievements(game.get("achievements", []), self.pinned_achievements)
         return {
-            "game": game,
-            "ranked": ranked
+            "game": {
+                "appid": int(appid),
+                "name": f"App {appid}",
+                "header_image": f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/header.jpg",
+                "total_achievements": 0,
+                "unlocked_count": 0,
+                "completion_percentage": 0.0,
+                "achievements": [],
+            },
+            "ranked": {
+                "pinned": [],
+                "up_next": [],
+                "almost_there": [],
+                "easy_grabs": [],
+                "missable": [],
+                "locked": [],
+                "unlocked": [],
+            }
         }
 
     async def toggle_pin(self, achievement_id: str):
