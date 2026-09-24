@@ -26,10 +26,8 @@ export function __setCallFn(fn: ((...args: any[]) => Promise<any>) | null) {
 export function getActiveApp(): { appid: number; name: string } | null {
   if (typeof window === 'undefined') return null;
   const w = window as any;
-  const running =
-    w.Router?.MainRunningApp ||
-    w.Router?.RunningApps?.[0] ||
-    w.DeckyPluginLoader?.Router?.MainRunningApp;
+  const router = w.DFL?.Router || w.Router || w.DeckyPluginLoader?.Router;
+  const running = router?.MainRunningApp || router?.RunningApps?.[0];
   if (running && running.appid) {
     const id = typeof running.appid === 'number' ? running.appid : parseInt(running.appid, 10);
     if (!isNaN(id) && id > 0) {

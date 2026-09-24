@@ -31,30 +31,53 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
     <div className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl p-3 flex flex-col gap-3 shadow-2xl box-border">
       {/* Game Selector Dropdown if multiple games exist */}
       {games.length > 1 && onSelectGame && (
-        <div className="relative">
+        <div className="relative" style={{ position: 'relative', width: '100%' }}>
           <select
             value={game.appid}
             onChange={(e) => onSelectGame(Number(e.target.value))}
+            style={{
+              backgroundColor: 'var(--bg-surface, #181f2a)',
+              color: 'var(--text-main, #e2e8f0)',
+              border: '1px solid var(--border-color, #344359)',
+              borderRadius: '8px',
+              padding: '6px 28px 6px 10px',
+              width: '100%',
+              fontSize: '12px',
+              fontWeight: 600,
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              outline: 'none',
+            }}
             className="w-full bg-[var(--bg-surface)] text-[var(--text-main)] text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[var(--border-color)] focus:outline-none focus:border-[var(--accent-primary)] appearance-none cursor-pointer pr-7"
           >
             {games.map((g) => (
-              <option key={g.appid} value={g.appid}>
+              <option key={g.appid} value={g.appid} style={{ background: '#181f2a', color: '#e2e8f0' }}>
                 {g.name}
               </option>
             ))}
           </select>
-          <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <ChevronDown
+            className="w-3.5 h-3.5 text-[var(--text-muted)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', width: 14, height: 14 }}
+          />
         </div>
       )}
 
       {/* Header Game Snapshot */}
-      <div className="flex items-center justify-between gap-2.5 bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--border-color)]">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-11 h-11 rounded-lg bg-slate-800 border border-slate-700/80 flex items-center justify-center font-bold text-slate-300 text-xs overflow-hidden flex-shrink-0 shadow-sm">
+      <div
+        className="flex items-center justify-between gap-2.5 bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--border-color)]"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderRadius: '8px', background: 'var(--bg-surface, #181f2a)', border: '1px solid var(--border-color, #344359)' }}
+      >
+        <div className="flex items-center gap-2.5 min-w-0" style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+          <div
+            className="w-11 h-11 rounded-lg bg-slate-800 border border-slate-700/80 flex items-center justify-center font-bold text-slate-300 text-xs overflow-hidden flex-shrink-0 shadow-sm"
+            style={{ width: 44, height: 44, minWidth: 44, maxWidth: 44, minHeight: 44, maxHeight: 44, overflow: 'hidden', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
             {game.header_image ? (
               <img
                 src={game.header_image}
                 alt={game.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 className="w-full h-full object-cover rounded-lg"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';

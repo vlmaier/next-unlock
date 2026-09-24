@@ -6,7 +6,21 @@ import { MockSteamClientService } from './services/mockSteamClient';
 import { Game, RankedAchievements, ColorThemeId } from './types/achievement';
 import { FullDashboard } from './components/FullDashboard';
 import { QuickAccessMenu } from './components/QuickAccessMenu';
-import './generated.css';
+import cssText from './generated.css';
+
+if (typeof document !== 'undefined') {
+  try {
+    let style = document.getElementById('next-unlock-styles');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'next-unlock-styles';
+      document.head.appendChild(style);
+    }
+    style.textContent = typeof cssText === 'string' ? cssText : '';
+  } catch (err) {
+    console.error('[Next Unlock] Style injection error:', err);
+  }
+}
 
 // Ensure Decky Loader SP_JSX fallback compatibility
 if (typeof window !== 'undefined') {

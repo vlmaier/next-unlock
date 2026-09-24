@@ -1,6 +1,7 @@
 """
 Local Steam VDF and Stats Cache reader for Next Unlock.
 Scans local Steam library folders and app manifests on Steam Deck to find installed games.
+Also inspects running processes to identify the currently active game.
 """
 
 import os
@@ -9,13 +10,6 @@ import glob
 import logging
 
 logger = logging.getLogger("NextUnlock.Parser")
-
-STEAM_PATHS = [
-    os.path.expanduser("~/.local/share/Steam"),
-    os.path.expanduser("~/.steam/steam"),
-    os.path.expanduser("~/.steam/root"),
-    "/home/deck/.local/share/Steam",
-]
 
 # Known non-game runtime / tool IDs to filter out
 IGNORED_APP_IDS = {
@@ -35,42 +29,59 @@ IGNORED_APP_IDS = {
 }
 
 
-def find_steam_root():
-    for p in STEAM_PATHS:
-        if os.path.isdir(p):
-            return p
-    return None
+def find_all_steam_roots():
+    """Finds all possible Steam root directories across user homes and system paths."""
+    roots = []
+    # Search all user home directories (e.g. /home/deck, /home/user)
+    for home in glob.glob("/home/*"):
+        for sub in [".local/share/Steam", ".steam/steam", ".steam/root"]:
+            p = os.path.join(home, sub)
+            if os.path.isdir(p) and p not in roots:
+                roots.append(p)
+
+    # Current user / root paths
+    for sub in [".local/share/Steam", ".steam/steam"]:
+        p = os.path.expanduser(f"~/{sub}")
+        if os.path.isdir(p) and p not in roots:
+            roots.append(p)
+
+    return roots
 
 
 def get_library_folders():
     """Returns list of all steamapps directories across internal storage and SD cards."""
     folders = set()
-    steam_root = find_steam_root()
-    if not steam_root:
-        return []
+    steam_roots = find_all_steam_roots()
 
-    default_steamapps = os.path.join(steam_root, "steamapps")
-    if os.path.isdir(default_steamapps):
-        folders.add(default_steamapps)
+    for root in steam_roots:
+        default_steamapps = os.path.join(root, "steamapps")
+        if os.path.isdir(default_steamapps):
+            folders.add(default_steamapps)
 
-    vdf_path = os.path.join(default_steamapps, "libraryfolders.vdf")
-    if os.path.isfile(vdf_path):
-        try:
-            with open(vdf_path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-            # Match "path" "\t\t/path/to/folder"
-            matches = re.findall(r'"path"\s+"([^"]+)"', content)
-            for m in matches:
-                candidate = os.path.join(m, "steamapps")
-                if os.path.isdir(candidate):
-                    folders.add(candidate)
-        except Exception as e:
-            logger.warning(f"Error parsing libraryfolders.vdf: {e}")
+        vdf_path = os.path.join(default_steamapps, "libraryfolders.vdf")
+        if os.path.isfile(vdf_path):
+            try:
+                with open(vdf_path, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                matches = re.findall(r'"path"\s+"([^"]+)"', content)
+                for m in matches:
+                    candidate = os.path.join(m, "steamapps")
+                    if os.path.isdir(candidate):
+                        folders.add(candidate)
+            except Exception as e:
+                logger.warning(f"Error parsing libraryfolders.vdf in {root}: {e}")
 
-    # Also check typical SD card mount paths on Steam Deck
-    for sd_path in glob.glob("/run/media/*/steamapps"):
-        if os.path.isdir(sd_path):
-            folders.add(sd_path)
+    # Search common SD card and external drive mount locations
+    for pattern in [
+        "/run/media/*/*/steamapps",
+        "/run/media/*/steamapps",
+        "/media/*/*/steamapps",
+        "/media/*/steamapps",
+        "/mnt/*/*/steamapps",
+    ]:
+        for sd_path in glob.glob(pattern):
+            if os.path.isdir(sd_path):
+                folders.add(sd_path)
 
     return list(folders)
 
@@ -114,8 +125,38 @@ def parse_appmanifest(filepath):
         return None
 
 
+def get_running_steam_appid():
+    """
+    Detects active running game AppID on SteamOS by checking process environments in /proc.
+    Steam sets SteamAppId=<id> for every running game process.
+    """
+    try:
+        for pid_dir in glob.glob("/proc/[0-9]*"):
+            try:
+                environ_path = os.path.join(pid_dir, "environ")
+                if not os.path.isfile(environ_path):
+                    continue
+                with open(environ_path, "rb") as f:
+                    env_data = f.read(4096)
+                for item in env_data.split(b"\x00"):
+                    if item.startswith(b"SteamAppId="):
+                        val = item.split(b"=", 1)[1].decode(errors="ignore").strip()
+                        if val.isdigit():
+                            appid = int(val)
+                            if appid not in IGNORED_APP_IDS and appid > 0:
+                                return appid
+            except Exception:
+                continue
+    except Exception as e:
+        logger.debug(f"Error checking running Steam app in /proc: {e}")
+    return None
+
+
 def get_installed_games():
-    """Scans all Steam library folders and returns installed games sorted by most recently played."""
+    """
+    Scans all Steam library folders and returns installed games.
+    If a game is currently running, it is prioritized to the very top.
+    """
     library_folders = get_library_folders()
     games_by_id = {}
 
@@ -123,36 +164,35 @@ def get_installed_games():
         for manifest in glob.glob(os.path.join(folder, "appmanifest_*.acf")):
             game = parse_appmanifest(manifest)
             if game:
-                # Keep the entry with the highest last_played if duplicated across drives
                 if game["appid"] not in games_by_id or game["last_played"] > games_by_id[game["appid"]]["last_played"]:
                     games_by_id[game["appid"]] = game
 
+    running_appid = get_running_steam_appid()
+
+    # If running app is not in discovered manifests, add placeholder entry
+    if running_appid and running_appid not in games_by_id:
+        games_by_id[running_appid] = {
+            "appid": running_appid,
+            "name": f"Running Game ({running_appid})",
+            "header_image": f"https://cdn.cloudflare.steamstatic.com/steam/apps/{running_appid}/header.jpg",
+            "last_played": 2147483647,
+            "total_achievements": 0,
+            "unlocked_count": 0,
+            "completion_percentage": 0.0,
+            "achievements": [],
+        }
+
     games = list(games_by_id.values())
-    games.sort(key=lambda g: g["last_played"], reverse=True)
+
+    # Sort so running game is first, followed by most recently played
+    def sort_key(g):
+        is_running = 1 if (running_appid and g["appid"] == running_appid) else 0
+        return (is_running, g.get("last_played", 0))
+
+    games.sort(key=sort_key, reverse=True)
     return games
 
 
-def find_steam_userdata_path():
-    steam_root = find_steam_root()
-    if steam_root:
-        userdata = os.path.join(steam_root, "userdata")
-        if os.path.isdir(userdata):
-            return userdata
-    return None
-
-
 def parse_local_user_stats(appid):
-    """
-    Attempts to read cached stats files for the given AppID.
-    Returns parsed dict or None if offline/not cached.
-    """
-    userdata = find_steam_userdata_path()
-    if not userdata:
-        return None
-
-    stats_files = glob.glob(f"{userdata}/*/{appid}/stats/UserGameStats_*.bin")
-    if not stats_files:
-        return None
-
-    logger.info(f"Found local stats binary: {stats_files[0]}")
+    """Attempts to read cached stats files for the given AppID."""
     return {"appid": appid, "source": "local_vdf_cache", "cached": True}

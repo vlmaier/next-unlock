@@ -4,7 +4,7 @@ const INITIAL_MOCK_GAMES: Game[] = [
   {
     appid: 1245620,
     name: 'Elden Ring',
-    header_image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80',
+    header_image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg',
     total_achievements: 42,
     unlocked_count: 34,
     completion_percentage: 80.9,
@@ -91,7 +91,7 @@ const INITIAL_MOCK_GAMES: Game[] = [
   {
     appid: 1091500,
     name: 'Cyberpunk 2077',
-    header_image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&auto=format&fit=crop&q=80',
+    header_image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg',
     total_achievements: 44,
     unlocked_count: 39,
     completion_percentage: 88.6,
@@ -133,7 +133,7 @@ const INITIAL_MOCK_GAMES: Game[] = [
   {
     appid: 1145350,
     name: 'Hades II',
-    header_image: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800&auto=format&fit=crop&q=80',
+    header_image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1145350/header.jpg',
     total_achievements: 38,
     unlocked_count: 31,
     completion_percentage: 81.5,
@@ -172,7 +172,7 @@ const INITIAL_MOCK_GAMES: Game[] = [
   {
     appid: 367520,
     name: 'Hollow Knight',
-    header_image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80',
+    header_image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/367520/header.jpg',
     total_achievements: 63,
     unlocked_count: 55,
     completion_percentage: 87.3,
