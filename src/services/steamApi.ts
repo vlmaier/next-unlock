@@ -161,6 +161,14 @@ function rankAchievementsLocally(achievements: Achievement[], pinnedSet: Set<str
   };
 }
 
+function getStorageSafe(): Storage | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
+    if (typeof localStorage !== 'undefined') return localStorage;
+  } catch {}
+  return null;
+}
+
 export class SteamApiService {
   private static pinnedIds = new Set<string>();
   private static detailsCache = new Map<number, { game: Game; ranked: RankedAchievements; ts: number }>();
@@ -239,9 +247,10 @@ export class SteamApiService {
     }
 
     // 2. Check localStorage cache for instant display across plugin mounts
-    if (!forceRefresh && typeof localStorage !== 'undefined') {
+    const storage = getStorageSafe();
+    if (!forceRefresh && storage) {
       try {
-        const item = localStorage.getItem(`next_unlock_cache_${appid}`);
+        const item = storage.getItem(`next_unlock_cache_${appid}`);
         if (item) {
           const parsed = JSON.parse(item);
           if (parsed && parsed.game && parsed.ranked) {
@@ -408,11 +417,13 @@ export class SteamApiService {
     return emptyResult;
   }
 
+
   private static cacheResult(appid: number, result: { game: Game; ranked: RankedAchievements }, ts: number) {
     this.detailsCache.set(appid, { ...result, ts });
-    if (typeof localStorage !== 'undefined') {
+    const storage = getStorageSafe();
+    if (storage) {
       try {
-        localStorage.setItem(`next_unlock_cache_${appid}`, JSON.stringify({ ...result, ts }));
+        storage.setItem(`next_unlock_cache_${appid}`, JSON.stringify({ ...result, ts }));
       } catch {}
     }
   }
@@ -422,6 +433,12 @@ export class SteamApiService {
     this.pinnedIds.clear();
     _cachedGames = null;
     _lastActiveApp = null;
+    const storage = getStorageSafe();
+    if (storage) {
+      try {
+        storage.clear();
+      } catch {}
+    }
   }
 
   static async togglePin(achievementId: string): Promise<{ achievement_id: string; pinned: boolean }> {

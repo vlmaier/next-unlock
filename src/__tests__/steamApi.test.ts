@@ -7,6 +7,10 @@ describe('SteamApiService Test Suite - 100% Execution Path Coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearApiCache();
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.clear();
+      if (typeof window !== 'undefined' && window.localStorage) window.localStorage.clear();
+    } catch {}
     __setCallFn(mockCall);
   });
 
