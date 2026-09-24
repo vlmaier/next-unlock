@@ -83,17 +83,124 @@ import {
   Field,
   ButtonItem,
   staticClasses,
-} from '@decky/ui';
-import { definePlugin } from '@decky/api';
+  Navigation,
+  showModal,
+  ModalRoot,
+} from './components/deckyUi';
+import { definePlugin, routerHook } from '@decky/api';
 
-const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) => {
+const FullDashboardPage: React.FC = () => {
   const [games, setGames] = useState<Game[]>([]);
   const [selectedAppId, setSelectedAppId] = useState<number | 'all'>('all');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [ranked, setRanked] = useState<RankedAchievements | null>(null);
   const [currentTheme, setCurrentTheme] = useState<ColorThemeId>('steam_slate');
   const [loading, setLoading] = useState<boolean>(true);
-  const [viewMode, setViewMode] = useState<'qam' | 'full'>('qam');
+
+  const loadData = async () => {
+    try {
+      const active = await getActiveAppAsync() || getActiveApp();
+      const gameList = await SteamApiService.getGames();
+      setGames(gameList);
+
+      let targetId: number | null = null;
+      if (selectedAppId !== 'all') {
+        targetId = selectedAppId;
+      } else if (active) {
+        targetId = active.appid;
+      } else if (gameList.length > 0) {
+        targetId = gameList[0].appid;
+      }
+
+      if (targetId) {
+        const details = await SteamApiService.getGameDetails(targetId);
+        if (details && details.game) {
+          setSelectedGame(details.game);
+          setRanked(details.ranked);
+        }
+      }
+    } catch (e) {
+      console.error('[Next Unlock] Error loading dashboard:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [selectedAppId]);
+
+  const handleTogglePin = async (id: string) => {
+    await SteamApiService.togglePin(id);
+    loadData();
+  };
+
+  const handleUnlock = async (appid: number, id: string) => {
+    await SteamApiService.unlockAchievement(appid, id);
+    loadData();
+  };
+
+  return (
+    <div
+      data-theme={currentTheme}
+      style={{
+        width: '100%',
+        minHeight: '100vh',
+        background: '#0e141d',
+        color: '#e2e8f0',
+        padding: '24px 32px',
+        overflowY: 'auto',
+        boxSizing: 'border-box',
+      }}
+      className="w-full min-h-screen bg-[var(--bg-primary,#0e141d)] text-[var(--text-main,#e2e8f0)] p-6 overflow-y-auto"
+    >
+      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <PanelSection>
+          <PanelSectionRow>
+            <ButtonItem
+              layout="below"
+              onClick={() => {
+                try {
+                  Navigation.NavigateBack();
+                } catch {
+                  window.history.back();
+                }
+              }}
+            >
+              ← Back to Game
+            </ButtonItem>
+          </PanelSectionRow>
+        </PanelSection>
+
+        {selectedGame && ranked ? (
+          <FullDashboard
+            games={games}
+            selectedAppId={selectedAppId}
+            selectedGame={selectedGame}
+            ranked={ranked}
+            onSelectGame={(id) => setSelectedAppId(id)}
+            onTogglePin={handleTogglePin}
+            onUnlockAchievement={handleUnlock}
+            currentTheme={currentTheme}
+            onThemeChange={setCurrentTheme}
+          />
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
+            <SteamSpinner />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const DeckyContent: React.FC = () => {
+  const [games, setGames] = useState<Game[]>([]);
+  const [selectedAppId, setSelectedAppId] = useState<number | 'all'>('all');
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [ranked, setRanked] = useState<RankedAchievements | null>(null);
+  const [currentTheme, setCurrentTheme] = useState<ColorThemeId>('steam_slate');
+  const [loading, setLoading] = useState<boolean>(true);
 
   const loadData = async () => {
     try {
@@ -157,7 +264,7 @@ const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) => {
     let mounted = true;
     const safetyTimer = setTimeout(() => {
       if (mounted) setLoading(false);
-    }, 1500);
+    }, 2500);
 
     loadData().finally(() => {
       if (mounted) setLoading(false);
@@ -174,9 +281,22 @@ const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) => {
     loadData();
   };
 
-  const handleUnlock = async (appid: number, id: string) => {
-    await SteamApiService.unlockAchievement(appid, id);
-    loadData();
+  const handleOpenFullDashboard = () => {
+    try {
+      Navigation.CloseSideMenus();
+      Navigation.Navigate('/next-unlock');
+    } catch (e) {
+      console.warn('[Next Unlock] router navigation error, trying showModal:', e);
+      try {
+        showModal(
+          <ModalRoot bAllowFullSize={true} bHideCloseIcon={false}>
+            <FullDashboardPage />
+          </ModalRoot>
+        );
+      } catch (modalErr) {
+        console.error('[Next Unlock] showModal fallback error:', modalErr);
+      }
+    }
   };
 
   const activeApp = getActiveApp();
@@ -194,40 +314,6 @@ const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) => {
     );
   }
 
-  // Fullscreen Dashboard view requested
-  if (viewMode === 'full' && selectedGame) {
-    return (
-      <div data-theme={currentTheme} className="w-full">
-        <PanelSection>
-          <PanelSectionRow>
-            <ButtonItem layout="below" onClick={() => setViewMode('qam')}>
-              ← Back to Quick View
-            </ButtonItem>
-          </PanelSectionRow>
-        </PanelSection>
-        {ranked ? (
-          <FullDashboard
-            games={games}
-            selectedAppId={selectedAppId}
-            selectedGame={selectedGame}
-            ranked={ranked}
-            onSelectGame={(id) => setSelectedAppId(id)}
-            onTogglePin={handleTogglePin}
-            onUnlockAchievement={handleUnlock}
-            currentTheme={currentTheme}
-            onThemeChange={setCurrentTheme}
-          />
-        ) : (
-          <PanelSection>
-            <PanelSectionRow>
-              <Field label="Loading Dashboard" description="Scanning achievements..." />
-            </PanelSectionRow>
-          </PanelSection>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div data-theme={currentTheme} className="w-full">
       <QuickAccessMenu
@@ -237,7 +323,7 @@ const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) => {
         isRunningGame={isRunning}
         onSelectGame={(id) => setSelectedAppId(id)}
         onTogglePin={handleTogglePin}
-        onOpenFullDashboard={() => setViewMode('full')}
+        onOpenFullDashboard={handleOpenFullDashboard}
         onRefresh={loadData}
       />
     </div>
@@ -246,16 +332,26 @@ const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) => {
 
 // Decky Loader Plugin Default Export matching official template
 export default definePlugin(() => {
+  try {
+    routerHook?.addRoute?.('/next-unlock', FullDashboardPage, { exact: true });
+  } catch (e) {
+    console.warn('[Next Unlock] routerHook addRoute error:', e);
+  }
+
   return {
     name: 'Next Unlock',
     title: <div className={staticClasses?.Title || 'font-bold text-sm'}>Next Unlock</div>,
     titleView: <div className={staticClasses?.Title || 'font-bold text-sm'}>Next Unlock</div>,
     content: (
       <ErrorBoundary>
-        <DeckyContent isQAM={true} />
+        <DeckyContent />
       </ErrorBoundary>
     ),
     icon: <FaTrophy />,
-    onDismount() {},
+    onDismount() {
+      try {
+        routerHook?.removeRoute?.('/next-unlock');
+      } catch {}
+    },
   };
 });

@@ -77,6 +77,17 @@ class TestBackend(unittest.TestCase):
         res2 = asyncio.run(plugin.toggle_pin("test_ach_1"))
         self.assertFalse(res2["pinned"])
 
+    def test_get_game_details_with_steam_fetcher(self):
+        plugin = Plugin()
+        # Test BALL x PIT (2062430)
+        res = asyncio.run(plugin.get_game_details(2062430))
+        self.assertIn("game", res)
+        self.assertIn("ranked", res)
+        self.assertGreater(res["game"]["total_achievements"], 0)
+        self.assertEqual(res["game"]["name"], "BALL x PIT")
+        self.assertGreater(len(res["ranked"]["up_next"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
+

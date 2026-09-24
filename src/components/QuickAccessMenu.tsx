@@ -7,7 +7,7 @@ import {
   ProgressBarWithInfo,
   ButtonItem,
   SingleDropdownOption,
-} from '@decky/ui';
+} from './deckyUi';
 import { Game, RankedAchievements } from '../types/achievement';
 
 interface QuickAccessMenuProps {

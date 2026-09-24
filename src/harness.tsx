@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { SteamApiService } from './services/steamApi';
+import { MockSteamClientService } from './services/mockSteamClient';
 import { Game, RankedAchievements, ColorThemeId } from './types/achievement';
 import { FullDashboard } from './components/FullDashboard';
 import { QuickAccessMenu } from './components/QuickAccessMenu';
@@ -9,7 +10,7 @@ import './index.css';
 
 const HarnessApp: React.FC = () => {
   const [games, setGames] = useState<Game[]>([]);
-  const [selectedAppId, setSelectedAppId] = useState<number | 'all'>(1245620);
+  const [selectedAppId, setSelectedAppId] = useState<number | 'all'>(2062430);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [ranked, setRanked] = useState<RankedAchievements | null>(null);
   const [currentTheme, setCurrentTheme] = useState<ColorThemeId>('steam_slate');
@@ -21,11 +22,17 @@ const HarnessApp: React.FC = () => {
   }, [currentTheme]);
 
   const loadData = async (appid: number | 'all' = selectedAppId) => {
-    const gameList = await SteamApiService.getGames();
+    let gameList = await SteamApiService.getGames();
+    if (!gameList || gameList.length === 0) {
+      gameList = await MockSteamClientService.getGames();
+    }
     setGames(gameList);
 
-    const activeId = appid === 'all' ? gameList[0].appid : appid;
-    const details = await SteamApiService.getGameDetails(activeId);
+    const activeId = appid === 'all' ? (gameList[0]?.appid || 2062430) : appid;
+    let details = await SteamApiService.getGameDetails(activeId);
+    if (!details || !details.game || details.game.total_achievements === 0) {
+      details = await MockSteamClientService.getGameDetails(activeId);
+    }
     setSelectedGame(details.game);
     setRanked(details.ranked);
   };
@@ -35,11 +42,13 @@ const HarnessApp: React.FC = () => {
   }, [selectedAppId]);
 
   const handleTogglePin = async (id: string) => {
+    await MockSteamClientService.togglePin(id);
     await SteamApiService.togglePin(id);
     await loadData(selectedAppId);
   };
 
   const handleUnlock = async (appid: number, id: string) => {
+    await MockSteamClientService.unlockAchievement(appid, id);
     await SteamApiService.unlockAchievement(appid, id);
     await loadData(selectedAppId);
   };

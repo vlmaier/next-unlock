@@ -9,6 +9,7 @@ import logging
 from backend.mock_data import get_mock_games, get_mock_game_by_id
 from backend.recommendation import rank_achievements
 from backend.achievement_parser import get_installed_games, parse_local_user_stats
+from backend.achievement_fetcher import fetch_achievements_from_steam
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("NextUnlock")
@@ -63,33 +64,42 @@ class Plugin:
         return installed if installed else []
 
     async def get_game_details(self, appid: int):
-        """Returns achievement details for a specific game."""
-        installed = get_installed_games()
-        for g in installed:
-            if g["appid"] == int(appid):
-                ranked = rank_achievements(g.get("achievements", []), self.pinned_achievements)
-                return {"game": g, "ranked": ranked}
+        """Returns achievement details for a specific game, fetching from Steam if needed."""
+        appid_int = int(appid)
+        target_game = None
+        for g in get_installed_games():
+            if g["appid"] == appid_int:
+                target_game = dict(g)
+                break
 
-        return {
-            "game": {
-                "appid": int(appid),
-                "name": f"App {appid}",
-                "header_image": f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/header.jpg",
+        if not target_game:
+            target_game = {
+                "appid": appid_int,
+                "name": f"App {appid_int}",
+                "header_image": f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid_int}/header.jpg",
                 "total_achievements": 0,
                 "unlocked_count": 0,
                 "completion_percentage": 0.0,
                 "achievements": [],
-            },
-            "ranked": {
-                "pinned": [],
-                "up_next": [],
-                "almost_there": [],
-                "easy_grabs": [],
-                "missable": [],
-                "locked": [],
-                "unlocked": [],
             }
-        }
+
+        achievements = target_game.get("achievements")
+        if not achievements:
+            fetched = fetch_achievements_from_steam(appid_int)
+            achievements = fetched.get("achievements", [])
+            if fetched.get("game_title") and (target_game["name"].startswith("App ") or target_game["name"].startswith("Running Game")):
+                target_game["name"] = fetched["game_title"]
+
+        target_game["achievements"] = achievements
+        target_game["total_achievements"] = len(achievements)
+        unlocked_count = sum(1 for a in achievements if a.get("unlocked"))
+        target_game["unlocked_count"] = unlocked_count
+        target_game["completion_percentage"] = (
+            round((unlocked_count / len(achievements)) * 100, 1) if achievements else 0.0
+        )
+
+        ranked = rank_achievements(achievements, self.pinned_achievements)
+        return {"game": target_game, "ranked": ranked}
 
     async def toggle_pin(self, achievement_id: str):
         """Pins or unpins an achievement."""
