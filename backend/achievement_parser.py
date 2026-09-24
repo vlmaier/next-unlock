@@ -131,13 +131,17 @@ def get_running_steam_appid():
     Steam sets SteamAppId=<id> for every running game process.
     """
     try:
-        for pid_dir in glob.glob("/proc/[0-9]*"):
+        pids = glob.glob("/proc/[0-9]*")
+        for pid_dir in pids:
             try:
                 environ_path = os.path.join(pid_dir, "environ")
                 if not os.path.isfile(environ_path):
                     continue
-                with open(environ_path, "rb") as f:
-                    env_data = f.read(4096)
+                fd = os.open(environ_path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
+                try:
+                    env_data = os.read(fd, 2048)
+                finally:
+                    os.close(fd)
                 for item in env_data.split(b"\x00"):
                     if item.startswith(b"SteamAppId="):
                         val = item.split(b"=", 1)[1].decode(errors="ignore").strip()

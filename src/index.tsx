@@ -93,10 +93,24 @@ const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) => {
   const [ranked, setRanked] = useState<RankedAchievements | null>(null);
   const [currentTheme, setCurrentTheme] = useState<ColorThemeId>('steam_slate');
   const [loading, setLoading] = useState<boolean>(true);
+  const [viewMode, setViewMode] = useState<'qam' | 'full'>('qam');
 
   const loadData = async () => {
     try {
-      const active = await getActiveAppAsync();
+      const syncActive = getActiveApp();
+      if (syncActive) {
+        setSelectedGame((prev) => prev && prev.appid === syncActive.appid ? prev : {
+          appid: syncActive.appid,
+          name: syncActive.name,
+          header_image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${syncActive.appid}/header.jpg`,
+          total_achievements: 0,
+          unlocked_count: 0,
+          completion_percentage: 0,
+          achievements: [],
+        });
+      }
+
+      const active = await getActiveAppAsync() || syncActive;
       const gameList = await SteamApiService.getGames();
       
       const mergedGames = [...gameList];
@@ -140,7 +154,19 @@ const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) => {
   };
 
   useEffect(() => {
-    loadData();
+    let mounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 1500);
+
+    loadData().finally(() => {
+      if (mounted) setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, [selectedAppId]);
 
   const handleTogglePin = async (id: string) => {
@@ -168,37 +194,52 @@ const DeckyContent: React.FC<{ isQAM?: boolean }> = ({ isQAM = false }) => {
     );
   }
 
-  return (
-    <div data-theme={currentTheme} className="w-full">
-      {isQAM ? (
-        <QuickAccessMenu
-          game={selectedGame}
-          ranked={ranked}
-          games={games}
-          isRunningGame={isRunning}
-          onSelectGame={(id) => setSelectedAppId(id)}
-          onTogglePin={handleTogglePin}
-          onRefresh={loadData}
-        />
-      ) : selectedGame && ranked ? (
-        <FullDashboard
-          games={games}
-          selectedAppId={selectedAppId}
-          selectedGame={selectedGame}
-          ranked={ranked}
-          onSelectGame={(id) => setSelectedAppId(id)}
-          onTogglePin={handleTogglePin}
-          onUnlockAchievement={handleUnlock}
-          currentTheme={currentTheme}
-          onThemeChange={setCurrentTheme}
-        />
-      ) : (
-        <PanelSection title="Next Unlock">
+  // Fullscreen Dashboard view requested
+  if (viewMode === 'full' && selectedGame) {
+    return (
+      <div data-theme={currentTheme} className="w-full">
+        <PanelSection>
           <PanelSectionRow>
-            <Field label="No Active Game" description="Launch a game on Steam to track achievements." />
+            <ButtonItem layout="below" onClick={() => setViewMode('qam')}>
+              ← Back to Quick View
+            </ButtonItem>
           </PanelSectionRow>
         </PanelSection>
-      )}
+        {ranked ? (
+          <FullDashboard
+            games={games}
+            selectedAppId={selectedAppId}
+            selectedGame={selectedGame}
+            ranked={ranked}
+            onSelectGame={(id) => setSelectedAppId(id)}
+            onTogglePin={handleTogglePin}
+            onUnlockAchievement={handleUnlock}
+            currentTheme={currentTheme}
+            onThemeChange={setCurrentTheme}
+          />
+        ) : (
+          <PanelSection>
+            <PanelSectionRow>
+              <Field label="Loading Dashboard" description="Scanning achievements..." />
+            </PanelSectionRow>
+          </PanelSection>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div data-theme={currentTheme} className="w-full">
+      <QuickAccessMenu
+        game={selectedGame}
+        ranked={ranked}
+        games={games}
+        isRunningGame={isRunning}
+        onSelectGame={(id) => setSelectedAppId(id)}
+        onTogglePin={handleTogglePin}
+        onOpenFullDashboard={() => setViewMode('full')}
+        onRefresh={loadData}
+      />
     </div>
   );
 };

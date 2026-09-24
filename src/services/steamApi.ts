@@ -3,6 +3,13 @@ import { MockSteamClientService } from './mockSteamClient';
 
 declare const process: any;
 
+export function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), timeoutMs)),
+  ]);
+}
+
 // Lazy-loaded call function from @decky/api
 let _callFn: ((...args: any[]) => Promise<any>) | null = null;
 
@@ -22,13 +29,10 @@ export function __setCallFn(fn: ((...args: any[]) => Promise<any>) | null) {
   _callFn = fn;
 }
 
-/**
- * Returns currently active / running Steam game if running inside SteamOS / Decky.
- */
 export function getActiveApp(): { appid: number; name: string } | null {
   if (typeof window === 'undefined') return null;
   const w = window as any;
-  const router = w.DFL?.Router || w.Router || w.DeckyPluginLoader?.Router;
+  const router = w.Router || w.DFL?.Router || w.DeckyPluginLoader?.Router;
   const running = router?.MainRunningApp || router?.RunningApps?.[0];
   if (running && running.appid) {
     const id = typeof running.appid === 'number' ? running.appid : parseInt(running.appid, 10);
@@ -48,7 +52,7 @@ export async function getActiveAppAsync(): Promise<{ appid: number; name: string
   try {
     const callFn = await getCallFn();
     if (callFn) {
-      const res = await callFn('get_active_app');
+      const res = await withTimeout(callFn('get_active_app'), 1000, null);
       const data = res && res.result ? res.result : res;
       if (data && data.appid) {
         return {
@@ -148,7 +152,7 @@ export class SteamApiService {
     try {
       const callFn = await getCallFn();
       if (callFn) {
-        const res = await callFn('get_games');
+        const res = await withTimeout(callFn('get_games'), 1500, null);
         const data = res && res.result ? res.result : res;
         if (Array.isArray(data) && data.length > 0) {
           const active = await getActiveAppAsync();
@@ -203,7 +207,11 @@ export class SteamApiService {
       const getAchFn = w.SteamClient?.Apps?.GetMyAchievementsForApp;
       if (typeof getAchFn === 'function') {
         try {
-          const res = await getAchFn(appid.toString());
+          const res = await withTimeout(
+            Promise.resolve(getAchFn(appid.toString())),
+            1500,
+            null
+          );
           const rawList = res?.data?.rgAchievements || res?.rgAchievements;
           if (Array.isArray(rawList)) {
             const achievements = rawList.map((a: any) => formatSteamAchievement(a, appid));
@@ -236,7 +244,7 @@ export class SteamApiService {
     try {
       const callFn = await getCallFn();
       if (!callFn) throw new Error('No Decky API');
-      const res = await callFn('get_game_details', appid);
+      const res = await withTimeout(callFn('get_game_details', appid), 1500, null);
       const data = res && res.result ? res.result : res;
       if (data && data.game && data.ranked) {
         return data;
