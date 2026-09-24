@@ -86,6 +86,7 @@ import {
   Navigation,
   showModal,
   ModalRoot,
+  Focusable,
 } from './components/deckyUi';
 import { definePlugin, routerHook } from '@decky/api';
 
@@ -171,7 +172,7 @@ const FullDashboardPage: React.FC = () => {
     >
       <style dangerouslySetInnerHTML={{ __html: typeof cssText === 'string' ? cssText : '' }} />
       <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {/* Sleek Steam Deck Header Bar with Quick Exit */}
+        {/* Sleek Steam Deck Header Bar with Focusable Quick Exit */}
         <div className="flex items-center justify-between pb-2 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-sky-400" />
@@ -181,7 +182,15 @@ const FullDashboardPage: React.FC = () => {
             </span>
           </div>
 
-          <button
+          <Focusable
+            focusable={true}
+            onActivate={() => {
+              try {
+                Navigation.NavigateBack();
+              } catch {
+                window.history.back();
+              }
+            }}
             onClick={() => {
               try {
                 Navigation.NavigateBack();
@@ -189,10 +198,10 @@ const FullDashboardPage: React.FC = () => {
                 window.history.back();
               }
             }}
-            className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 hover:text-white rounded-lg border border-slate-700 text-xs font-bold transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 hover:text-white rounded-lg border border-slate-700 text-xs font-bold transition-all cursor-pointer shadow-sm focus:ring-2 focus:ring-sky-400 focus:scale-[1.02] focus:outline-none"
           >
             ← Back to Game
-          </button>
+          </Focusable>
         </div>
 
         {selectedGame && ranked ? (
@@ -272,10 +281,14 @@ const DeckyContent: React.FC = () => {
   };
 
   useEffect(() => {
+    const act = getActiveApp();
+    if (act && selectedAppId === 'all') {
+      setSelectedAppId(act.appid);
+    }
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
-    const safetyTimer = setTimeout(() => {
-      if (mounted) setLoading(false);
-    }, 2500);
 
     loadData().finally(() => {
       if (mounted) setLoading(false);
@@ -283,7 +296,6 @@ const DeckyContent: React.FC = () => {
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimer);
     };
   }, [selectedAppId]);
 
@@ -315,13 +327,17 @@ const DeckyContent: React.FC = () => {
 
   if (loading && !selectedGame) {
     return (
-      <PanelSection>
-        <PanelSectionRow>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0', width: '100%' }}>
-            <SteamSpinner />
-          </div>
-        </PanelSectionRow>
-      </PanelSection>
+      <div data-theme={currentTheme} className="w-full">
+        <style dangerouslySetInnerHTML={{ __html: typeof cssText === 'string' ? cssText : '' }} />
+        <PanelSection title="Next Unlock">
+          <PanelSectionRow>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 0', width: '100%', gap: '8px' }}>
+              <SteamSpinner />
+              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>Scanning active game achievements...</span>
+            </div>
+          </PanelSectionRow>
+        </PanelSection>
+      </div>
     );
   }
 

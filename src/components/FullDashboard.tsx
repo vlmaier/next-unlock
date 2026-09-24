@@ -6,7 +6,8 @@ import { AchievementCard } from './AchievementCard';
 import { SearchBar } from './SearchBar';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { GameSelector } from './GameSelector';
-import { Trophy, Award, CheckCircle2, ListFilter, Sparkles, Layers } from 'lucide-react';
+import { Trophy, Award, CheckCircle2, ListFilter, Sparkles, Layers, Gamepad2 } from 'lucide-react';
+import { Focusable } from './deckyUi';
 
 interface FullDashboardProps {
   games: Game[];
@@ -33,7 +34,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
 }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryFilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [bannerImgError, setBannerImgError] = useState(false);
+  const [imgIdx, setImgIdx] = useState(0);
 
   const isAllGamesMode = selectedAppId === 'all';
 
@@ -131,12 +132,21 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
         list = allGamesStats.achievements.filter((a) => a.unlocked);
       }
     } else {
-      if (activeCategory === 'up_next') list = ranked.up_next;
-      else if (activeCategory === 'almost_there') list = ranked.almost_there;
-      else if (activeCategory === 'easy_grabs') list = ranked.easy_grabs;
-      else if (activeCategory === 'missable') list = ranked.missable;
-      else if (activeCategory === 'pinned') list = ranked.pinned;
-      else if (activeCategory === 'unlocked') list = ranked.unlocked;
+      if (activeCategory === 'all') {
+        list = selectedGame.achievements;
+      } else if (activeCategory === 'up_next') {
+        list = [...ranked.locked].sort((a, b) => (b.rec_score || 0) - (a.rec_score || 0));
+      } else if (activeCategory === 'almost_there') {
+        list = ranked.almost_there;
+      } else if (activeCategory === 'easy_grabs') {
+        list = ranked.easy_grabs;
+      } else if (activeCategory === 'missable') {
+        list = ranked.missable;
+      } else if (activeCategory === 'pinned') {
+        list = ranked.pinned;
+      } else if (activeCategory === 'unlocked') {
+        list = ranked.unlocked;
+      }
     }
 
     if (!searchQuery.trim()) return list;
@@ -149,6 +159,18 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
         (a.hint && a.hint.toLowerCase().includes(q))
     );
   }, [isAllGamesMode, allGamesStats, selectedGame, ranked, activeCategory, searchQuery]);
+
+  const imageCandidates = useMemo(() => {
+    if (!selectedGame) return [];
+    return [
+      selectedGame.header_image,
+      `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${selectedGame.appid}/header.jpg`,
+      `https://steamcdn-a.akamaihd.net/steam/apps/${selectedGame.appid}/header.jpg`,
+      `https://cdn.cloudflare.steamstatic.com/steam/apps/${selectedGame.appid}/header.jpg`,
+    ].filter(Boolean) as string[];
+  }, [selectedGame]);
+
+  const currentImg = imgIdx < imageCandidates.length ? imageCandidates[imgIdx] : null;
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 p-4 md:p-6">
@@ -201,16 +223,19 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
           </div>
         ) : (
           <div className="flex items-center gap-4 w-full md:w-auto">
-            {!bannerImgError && selectedGame.header_image ? (
+            {currentImg ? (
               <img
-                src={selectedGame.header_image}
+                src={currentImg}
                 alt={selectedGame.name}
-                onError={() => setBannerImgError(true)}
+                onError={() => setImgIdx((prev) => prev + 1)}
                 className="w-24 h-24 md:w-28 md:h-28 rounded-xl object-cover border border-[var(--border-color)] shadow-md flex-shrink-0"
               />
             ) : (
-              <div className="w-24 h-24 md:w-28 md:h-28 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-color)] flex items-center justify-center font-black text-[var(--text-main)] text-lg text-center p-2 flex-shrink-0">
-                {selectedGame.name}
+              <div className="w-24 h-24 md:w-28 md:h-28 rounded-xl bg-gradient-to-br from-sky-950 to-slate-900 border border-[var(--border-color)] flex flex-col items-center justify-center text-[var(--accent-primary)] p-2 shadow-md flex-shrink-0">
+                <Gamepad2 className="w-8 h-8 mb-1" />
+                <span className="text-[10px] font-bold text-center text-[var(--text-main)] truncate max-w-full">
+                  {selectedGame.name}
+                </span>
               </div>
             )}
 
@@ -287,7 +312,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
           <p className="text-[11px]">Clear search or switch category filters above.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <Focusable flow-children="grid" className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {filteredAchievements.map((ach) => (
             <AchievementCard
               key={ach.id}
@@ -297,7 +322,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
               showUnlockButton={true}
             />
           ))}
-        </div>
+        </Focusable>
       )}
     </div>
   );

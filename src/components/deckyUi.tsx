@@ -152,3 +152,57 @@ export const staticClasses = dfl.staticClasses || { Title: 'font-bold text-sm' }
 export const showModal = dfl.showModal || ((el: any) => console.log('[Mock showModal]', el));
 export const ModalRoot = dfl.ModalRoot || (({ children }: any) => <div>{children}</div>);
 export type SingleDropdownOption = { data: any; label: React.ReactNode };
+
+// 9. Focusable for SteamOS Gamepad / Controller Navigation
+export interface FocusableProps extends React.HTMLAttributes<HTMLDivElement> {
+  children?: React.ReactNode;
+  focusable?: boolean;
+  onActivate?: (e: any) => void;
+  onCancel?: (e: any) => void;
+  focusClassName?: string;
+  focusWithinClassName?: string;
+  noFocusRing?: boolean;
+  'flow-children'?: string;
+}
+
+export const Focusable: React.FC<FocusableProps> = (props) => {
+  const Real =
+    dfl.Focusable ||
+    (typeof window !== 'undefined' &&
+      ((window as any).DFL?.Focusable || (window as any).DeckyPluginLoader?.dfl?.Focusable));
+  if (Real) {
+    return <Real {...props} />;
+  }
+
+  const {
+    children,
+    focusable = true,
+    onActivate,
+    onClick,
+    onCancel,
+    focusClassName = 'ring-2 ring-sky-400 scale-[1.01] shadow-lg',
+    className = '',
+    style,
+    ...rest
+  } = props;
+
+  return (
+    <div
+      tabIndex={focusable ? 0 : undefined}
+      onClick={onActivate || onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          (onActivate || onClick)?.(e as any);
+        } else if (e.key === 'Escape') {
+          onCancel?.(e as any);
+        }
+      }}
+      className={`focus:outline-none focus:${focusClassName} transition-all cursor-pointer ${className}`}
+      style={style}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+};

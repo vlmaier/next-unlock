@@ -1,6 +1,7 @@
 import React from 'react';
 import { CategoryFilterType } from '../types/achievement';
 import { Sparkles, Clock, Zap, EyeOff, Pin, CheckCircle2, List } from 'lucide-react';
+import { Focusable } from './deckyUi';
 
 interface CategoryFilterProps {
   activeCategory: CategoryFilterType;
@@ -32,17 +33,19 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   counts,
 }) => {
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar w-full">
+    <Focusable flow-children="row" className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar w-full">
       {CATEGORIES.map((cat) => {
         const Icon = cat.icon;
         const count = counts[cat.id] || 0;
         const isActive = activeCategory === cat.id;
 
         return (
-          <button
+          <Focusable
             key={cat.id}
+            focusable={true}
+            onActivate={() => onSelectCategory(cat.id)}
             onClick={() => onSelectCategory(cat.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all duration-150 border flex-shrink-0 ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all duration-150 border flex-shrink-0 cursor-pointer focus:ring-2 focus:ring-[var(--focus-ring)] focus:scale-[1.02] focus:outline-none ${
               isActive
                 ? 'bg-[var(--accent-primary)] text-white border-[var(--accent-primary)] shadow-sm'
                 : 'bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-card)] border-[var(--border-color)]'
@@ -59,9 +62,9 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             >
               {count}
             </span>
-          </button>
+          </Focusable>
         );
       })}
-    </div>
+    </Focusable>
   );
 };

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Game } from '../types/achievement';
 import { Layers, Gamepad2 } from 'lucide-react';
+import { Focusable } from './deckyUi';
+import { getGameHeaderUrl } from '../services/steamApi';
 
 interface GameSelectorProps {
   games: Game[];
@@ -17,11 +19,13 @@ export const GameSelector: React.FC<GameSelectorProps> = ({
   const isAllSelected = selectedAppId === 'all';
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+    <Focusable flow-children="row" className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar w-full">
       {/* "All Games Overview" Tab Button */}
-      <button
+      <Focusable
+        focusable={true}
+        onActivate={() => onSelectGame('all')}
         onClick={() => onSelectGame('all')}
-        className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${
+        className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border cursor-pointer focus:ring-2 focus:ring-[var(--focus-ring)] focus:scale-[1.02] focus:outline-none ${
           isAllSelected
             ? 'bg-[var(--accent-primary)] text-white border-[var(--accent-primary)] shadow-sm'
             : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-main)] hover:border-[var(--text-muted)]'
@@ -29,26 +33,29 @@ export const GameSelector: React.FC<GameSelectorProps> = ({
       >
         <Layers className="w-4 h-4 flex-shrink-0" />
         <span>All Games Overview</span>
-      </button>
+      </Focusable>
 
       {/* Individual Game Pills */}
       {games.map((game) => {
         const isSelected = selectedAppId === game.appid;
         const isFailed = failedImages[game.appid];
+        const imgSrc = game.header_image || getGameHeaderUrl(game.appid);
 
         return (
-          <button
+          <Focusable
             key={game.appid}
+            focusable={true}
+            onActivate={() => onSelectGame(game.appid)}
             onClick={() => onSelectGame(game.appid)}
-            className={`flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${
+            className={`flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border cursor-pointer focus:ring-2 focus:ring-[var(--focus-ring)] focus:scale-[1.02] focus:outline-none ${
               isSelected
                 ? 'bg-[var(--accent-primary)] text-white border-[var(--accent-primary)] shadow-sm'
                 : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-main)] hover:border-[var(--text-muted)]'
             }`}
           >
-            {!isFailed && game.header_image ? (
+            {!isFailed && imgSrc ? (
               <img
-                src={game.header_image}
+                src={imgSrc}
                 alt={game.name}
                 onError={() => setFailedImages((prev) => ({ ...prev, [game.appid]: true }))}
                 className="w-5 h-5 rounded object-cover border border-slate-700/60 flex-shrink-0"
@@ -66,9 +73,9 @@ export const GameSelector: React.FC<GameSelectorProps> = ({
             >
               {Math.round(game.completion_percentage)}%
             </span>
-          </button>
+          </Focusable>
         );
       })}
-    </div>
+    </Focusable>
   );
 };

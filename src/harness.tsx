@@ -8,6 +8,10 @@ import { QuickAccessMenu } from './components/QuickAccessMenu';
 import { Monitor, Smartphone, Sparkles, RefreshCw } from 'lucide-react';
 import './index.css';
 
+if (typeof window !== 'undefined') {
+  (window as any).__NEXT_UNLOCK_TEST_HARNESS__ = true;
+}
+
 const HarnessApp: React.FC = () => {
   const [games, setGames] = useState<Game[]>([]);
   const [selectedAppId, setSelectedAppId] = useState<number | 'all'>('all');

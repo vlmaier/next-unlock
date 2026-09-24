@@ -29,21 +29,26 @@ export function __setCallFn(fn: ((...args: any[]) => Promise<any>) | null) {
   _callFn = fn;
 }
 
+// Cached active app and games list to avoid flashing and slow loading
+let _lastActiveApp: { appid: number; name: string } | null = null;
+let _cachedGames: { data: Game[]; timestamp: number } | null = null;
+
 export function getActiveApp(): { appid: number; name: string } | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined') return _lastActiveApp;
   const w = window as any;
   const router = w.Router || w.DFL?.Router || w.DeckyPluginLoader?.Router;
   const running = router?.MainRunningApp || router?.RunningApps?.[0];
   if (running && running.appid) {
     const id = typeof running.appid === 'number' ? running.appid : parseInt(running.appid, 10);
     if (!isNaN(id) && id > 0) {
-      return {
+      _lastActiveApp = {
         appid: id,
         name: running.display_name || running.name || `App ${id}`,
       };
+      return _lastActiveApp;
     }
   }
-  return null;
+  return _lastActiveApp;
 }
 
 export async function getActiveAppAsync(): Promise<{ appid: number; name: string } | null> {
@@ -52,17 +57,25 @@ export async function getActiveAppAsync(): Promise<{ appid: number; name: string
   try {
     const callFn = await getCallFn();
     if (callFn) {
-      const res = await withTimeout(callFn('get_active_app'), 5000, null);
+      const res = await withTimeout(callFn('get_active_app'), 2500, null);
       const data = res && res.result ? res.result : res;
       if (data && data.appid) {
-        return {
+        _lastActiveApp = {
           appid: Number(data.appid),
           name: data.name || `App ${data.appid}`,
         };
+        return _lastActiveApp;
       }
     }
   } catch {}
-  return null;
+  return _lastActiveApp;
+}
+
+export function getGameHeaderUrl(appid: number, providedUrl?: string): string {
+  if (providedUrl && !providedUrl.endsWith('/header.jpg')) {
+    return providedUrl;
+  }
+  return `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`;
 }
 
 function formatSteamAchievement(ach: any, appid: number): Achievement {
@@ -70,7 +83,7 @@ function formatSteamAchievement(ach: any, appid: number): Achievement {
     typeof ach.flAchieved === 'number'
       ? ach.flAchieved
       : parseFloat(ach.flAchieved) || 0;
-  const isUnlocked = !!ach.bAchieved;
+  const isUnlocked = !!(ach.bAchieved || ach.unlocked);
   const pct = Math.round(flAchieved * 10) / 10;
   const rarity: RarityTier = pct <= 5.0 ? 'ultra_rare' : pct <= 15.0 ? 'rare' : 'common';
 
@@ -87,10 +100,13 @@ function formatSteamAchievement(ach: any, appid: number): Achievement {
     };
   }
 
+  const name = ach.strName || ach.name || 'Achievement';
+  const desc = ach.strDescription || ach.description || '';
+
   return {
     id: ach.strID || ach.id || `ach_${Math.random()}`,
-    name: ach.strName || ach.name || 'Achievement',
-    description: ach.strDescription || ach.description || '',
+    name,
+    description: desc,
     icon: iconUrl,
     unlocked: isUnlocked,
     unlock_time: ach.rtUnlocked || ach.unlock_time || null,
@@ -98,7 +114,7 @@ function formatSteamAchievement(ach: any, appid: number): Achievement {
     rarity_tier: rarity,
     hidden: !!ach.bHidden,
     progress,
-    hint: ach.strDescription || ach.description || '',
+    hint: desc || (pct > 0 ? `Unlocked by ${pct}% of players` : ''),
     rec_score: (100 - pct) + (isUnlocked ? 0 : 50),
   };
 }
@@ -136,7 +152,7 @@ function rankAchievementsLocally(achievements: Achievement[], pinnedSet: Set<str
 
   return {
     pinned,
-    up_next: sortedLocked.slice(0, 3),
+    up_next: sortedLocked.slice(0, 5),
     almost_there,
     easy_grabs,
     missable,
@@ -147,12 +163,18 @@ function rankAchievementsLocally(achievements: Achievement[], pinnedSet: Set<str
 
 export class SteamApiService {
   private static pinnedIds = new Set<string>();
+  private static detailsCache = new Map<number, { game: Game; ranked: RankedAchievements; ts: number }>();
 
-  static async getGames(): Promise<Game[]> {
+  static async getGames(forceRefresh = false): Promise<Game[]> {
+    const now = Date.now();
+    if (!forceRefresh && _cachedGames && now - _cachedGames.timestamp < 30000) {
+      return _cachedGames.data;
+    }
+
     try {
       const callFn = await getCallFn();
       if (callFn) {
-        const res = await withTimeout(callFn('get_games'), 5000, null);
+        const res = await withTimeout(callFn('get_games'), 3000, null);
         const data = res && res.result ? res.result : res;
         if (Array.isArray(data) && data.length > 0) {
           const active = await getActiveAppAsync();
@@ -162,7 +184,7 @@ export class SteamApiService {
               data.unshift({
                 appid: active.appid,
                 name: active.name,
-                header_image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${active.appid}/header.jpg`,
+                header_image: getGameHeaderUrl(active.appid),
                 total_achievements: 0,
                 unlocked_count: 0,
                 completion_percentage: 0,
@@ -170,6 +192,7 @@ export class SteamApiService {
               });
             }
           }
+          _cachedGames = { data, timestamp: now };
           return data;
         }
       }
@@ -179,17 +202,19 @@ export class SteamApiService {
 
     const active = await getActiveAppAsync();
     if (active) {
-      return [
+      const single = [
         {
           appid: active.appid,
           name: active.name,
-          header_image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${active.appid}/header.jpg`,
+          header_image: getGameHeaderUrl(active.appid),
           total_achievements: 0,
           unlocked_count: 0,
           completion_percentage: 0,
           achievements: [],
         },
       ];
+      _cachedGames = { data: single, timestamp: now };
+      return single;
     }
 
     // In unit test environment, fallback to MockSteamClientService so vitest passes
@@ -200,53 +225,65 @@ export class SteamApiService {
     return [];
   }
 
-  static async getGameDetails(appid: number): Promise<{ game: Game; ranked: RankedAchievements }> {
-    // 1. Try Decky RPC backend first (Python fetcher has local cached achievements)
-    try {
-      const callFn = await getCallFn();
-      if (callFn) {
-        const res = await withTimeout(callFn('get_game_details', appid), 10000, null);
-        const data = res && res.result ? res.result : res;
-        if (data && data.game && data.game.total_achievements > 0) {
-          return data;
-        }
+  static async getGameDetails(appid: number, forceRefresh = false): Promise<{ game: Game; ranked: RankedAchievements }> {
+    const now = Date.now();
+
+    // 1. Check in-memory cache first (0ms instantaneous return)
+    if (!forceRefresh && this.detailsCache.has(appid)) {
+      const cached = this.detailsCache.get(appid)!;
+      // Stale-while-revalidate: if older than 45s, refresh in background
+      if (now - cached.ts > 45000) {
+        this.fetchAndCacheGameDetails(appid).catch(() => {});
       }
-    } catch (e) {
-      console.warn('[Next Unlock] RPC get_game_details error:', e);
+      return { game: cached.game, ranked: cached.ranked };
     }
 
-    // 2. Try querying SteamClient.Apps directly (native SteamOS Client)
+    // 2. Check localStorage cache for instant display across plugin mounts
+    if (!forceRefresh && typeof localStorage !== 'undefined') {
+      try {
+        const item = localStorage.getItem(`next_unlock_cache_${appid}`);
+        if (item) {
+          const parsed = JSON.parse(item);
+          if (parsed && parsed.game && parsed.ranked) {
+            this.detailsCache.set(appid, { ...parsed, ts: parsed.ts || now });
+            // Revalidate in background
+            this.fetchAndCacheGameDetails(appid).catch(() => {});
+            return { game: parsed.game, ranked: parsed.ranked };
+          }
+        }
+      } catch {}
+    }
+
+    return this.fetchAndCacheGameDetails(appid);
+  }
+
+  private static async fetchAndCacheGameDetails(appid: number): Promise<{ game: Game; ranked: RankedAchievements }> {
+    const now = Date.now();
+    let nativeAchievements: any[] | null = null;
+    const userUnlockMap: Record<string, boolean> = {};
+
+    // 1. Query native SteamClient.Apps directly (SteamOS authenticated client, exact unlock status)
     if (typeof window !== 'undefined') {
       const w = window as any;
-      const getAchFn = w.SteamClient?.Apps?.GetMyAchievementsForApp;
-      if (typeof getAchFn === 'function') {
+      if (typeof w.SteamClient?.Apps?.GetMyAchievementsForApp === 'function') {
         try {
           const res = await withTimeout(
-            Promise.resolve(getAchFn(appid.toString())),
-            3000,
+            Promise.resolve(w.SteamClient.Apps.GetMyAchievementsForApp(String(appid))),
+            2500,
             null
           );
           const rawList = res?.data?.rgAchievements || res?.rgAchievements;
           if (Array.isArray(rawList) && rawList.length > 0) {
-            const achievements = rawList.map((a: any) => formatSteamAchievement(a, appid));
-            const total = achievements.length;
-            const unlocked = achievements.filter((a) => a.unlocked).length;
-            const completion_percentage = total > 0 ? Math.round((unlocked / total) * 1000) / 10 : 0;
-            const active = await getActiveAppAsync();
-            const gameName = (active && active.appid === appid) ? active.name : `App ${appid}`;
-
-            const game: Game = {
-              appid,
-              name: gameName,
-              header_image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`,
-              total_achievements: total,
-              unlocked_count: unlocked,
-              completion_percentage,
-              achievements,
-            };
-
-            const ranked = rankAchievementsLocally(achievements, this.pinnedIds);
-            return { game, ranked };
+            nativeAchievements = rawList;
+            rawList.forEach((a: any) => {
+              const isAchieved = !!a.bAchieved;
+              if (a.strID) userUnlockMap[a.strID] = isAchieved;
+              if (a.id) userUnlockMap[a.id] = isAchieved;
+              if (a.strName) {
+                const norm = `ach_${a.strName.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
+                userUnlockMap[norm] = isAchieved;
+              }
+            });
           }
         } catch (clientErr) {
           console.warn('[Next Unlock] SteamClient.Apps.GetMyAchievementsForApp error:', clientErr);
@@ -254,20 +291,105 @@ export class SteamApiService {
       }
     }
 
-    // 3. Fallback to MockSteamClientService if available (or in test mode)
-    const mockDetails = await MockSteamClientService.getGameDetails(appid);
-    if (mockDetails && mockDetails.game && mockDetails.game.total_achievements > 0) {
-      return mockDetails;
+    // 2. Query Decky RPC backend (for rich descriptions, hint metadata, and bundled caches)
+    let backendDetails: { game: Game; ranked: RankedAchievements } | null = null;
+    try {
+      const callFn = await getCallFn();
+      if (callFn) {
+        const res = await withTimeout(callFn('get_game_details', appid), 5000, null);
+        const data = res && res.result ? res.result : res;
+        if (data && data.game && data.game.total_achievements > 0) {
+          backendDetails = data;
+        }
+      }
+    } catch (e) {
+      console.warn('[Next Unlock] RPC get_game_details error:', e);
     }
 
-    // 4. Default clean empty state for this appid
+    // 3. Merge live native user unlock state with backend / cache data
+    if (backendDetails && backendDetails.game) {
+      const achievements: Achievement[] = backendDetails.game.achievements.map((a) => {
+        // If native SteamOS authenticated client knows the unlock state, override it!
+        let isUnlocked = a.unlocked;
+        if (userUnlockMap[a.id] !== undefined) {
+          isUnlocked = userUnlockMap[a.id];
+        } else if (a.name) {
+          const norm = `ach_${a.name.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
+          if (userUnlockMap[norm] !== undefined) {
+            isUnlocked = userUnlockMap[norm];
+          }
+        }
+        return {
+          ...a,
+          unlocked: isUnlocked,
+          rec_score: (100 - a.global_percentage) + (isUnlocked ? 0 : 50),
+        };
+      });
+
+      const total = achievements.length;
+      const unlockedCount = achievements.filter((a) => a.unlocked).length;
+      const pct = total > 0 ? Math.round((unlockedCount / total) * 1000) / 10 : 0;
+      const ranked = rankAchievementsLocally(achievements, this.pinnedIds);
+
+      const mergedGame: Game = {
+        ...backendDetails.game,
+        header_image: getGameHeaderUrl(appid, backendDetails.game.header_image),
+        total_achievements: total,
+        unlocked_count: unlockedCount,
+        completion_percentage: pct,
+        achievements,
+      };
+
+      const result = { game: mergedGame, ranked };
+      this.cacheResult(appid, result, now);
+      return result;
+    }
+
+    // 4. If only native SteamClient was available, build directly from it
+    if (nativeAchievements && nativeAchievements.length > 0) {
+      const achievements = nativeAchievements.map((a: any) => formatSteamAchievement(a, appid));
+      const total = achievements.length;
+      const unlockedCount = achievements.filter((a) => a.unlocked).length;
+      const pct = total > 0 ? Math.round((unlockedCount / total) * 1000) / 10 : 0;
+      const active = await getActiveAppAsync();
+      const gameName = (active && active.appid === appid) ? active.name : `App ${appid}`;
+
+      const game: Game = {
+        appid,
+        name: gameName,
+        header_image: getGameHeaderUrl(appid),
+        total_achievements: total,
+        unlocked_count: unlockedCount,
+        completion_percentage: pct,
+        achievements,
+      };
+
+      const ranked = rankAchievementsLocally(achievements, this.pinnedIds);
+      const result = { game, ranked };
+      this.cacheResult(appid, result, now);
+      return result;
+    }
+
+    // 5. In test environment or test harness, fallback to MockSteamClientService
+    const isTestMode =
+      process.env.NODE_ENV === 'test' ||
+      (typeof window !== 'undefined' && (window as any).__NEXT_UNLOCK_TEST_HARNESS__);
+
+    if (isTestMode) {
+      const mockDetails = await MockSteamClientService.getGameDetails(appid);
+      if (mockDetails && mockDetails.game && mockDetails.game.total_achievements > 0) {
+        return mockDetails;
+      }
+    }
+
+    // 6. Clean empty fallback state for unsupported or empty app
     const active = await getActiveAppAsync();
     const gameName = (active && active.appid === appid) ? active.name : `App ${appid}`;
-    return {
+    const emptyResult = {
       game: {
         appid,
         name: gameName,
-        header_image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`,
+        header_image: getGameHeaderUrl(appid),
         total_achievements: 0,
         unlocked_count: 0,
         completion_percentage: 0,
@@ -281,33 +403,60 @@ export class SteamApiService {
         missable: [],
         locked: [],
         unlocked: [],
-      }
+      },
     };
+    return emptyResult;
+  }
+
+  private static cacheResult(appid: number, result: { game: Game; ranked: RankedAchievements }, ts: number) {
+    this.detailsCache.set(appid, { ...result, ts });
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(`next_unlock_cache_${appid}`, JSON.stringify({ ...result, ts }));
+      } catch {}
+    }
+  }
+
+  static clearCache() {
+    this.detailsCache.clear();
+    this.pinnedIds.clear();
+    _cachedGames = null;
+    _lastActiveApp = null;
   }
 
   static async togglePin(achievementId: string): Promise<{ achievement_id: string; pinned: boolean }> {
-    if (this.pinnedIds.has(achievementId)) {
-      this.pinnedIds.delete(achievementId);
-    } else {
-      this.pinnedIds.add(achievementId);
-    }
-
     try {
       const callFn = await getCallFn();
       if (callFn) {
         const res = await callFn('toggle_pin', achievementId);
         const data = res && res.result ? res.result : res;
         if (data && data.achievement_id) {
+          if (data.pinned) {
+            this.pinnedIds.add(achievementId);
+          } else {
+            this.pinnedIds.delete(achievementId);
+          }
           return data;
         }
       }
     } catch (e) {
       console.warn('[Next Unlock] RPC toggle_pin error, using fallback:', e);
     }
-    return MockSteamClientService.togglePin(achievementId);
+
+    const fallbackRes = await MockSteamClientService.togglePin(achievementId);
+    if (fallbackRes.pinned) {
+      this.pinnedIds.add(achievementId);
+    } else {
+      this.pinnedIds.delete(achievementId);
+    }
+    return fallbackRes;
   }
 
   static async unlockAchievement(appid: number, achievementId: string): Promise<boolean> {
     return MockSteamClientService.unlockAchievement(appid, achievementId);
   }
+}
+
+export function clearApiCache() {
+  SteamApiService.clearCache();
 }

@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SteamApiService, __setCallFn } from '../services/steamApi';
+import { SteamApiService, __setCallFn, clearApiCache } from '../services/steamApi';
 
 describe('SteamApiService Test Suite - 100% Execution Path Coverage', () => {
   const mockCall = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    clearApiCache();
     __setCallFn(mockCall);
   });
 

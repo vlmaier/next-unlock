@@ -81,10 +81,12 @@ class Plugin:
         total = len(achievements)
         pct = round((unlocked_count / total) * 100, 1) if total > 0 else 0.0
 
+        header_img = fetched.get("header_image") or f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid_int}/header.jpg"
+
         target_game = {
             "appid": appid_int,
             "name": game_title,
-            "header_image": f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid_int}/header.jpg",
+            "header_image": header_img,
             "total_achievements": total,
             "unlocked_count": unlocked_count,
             "completion_percentage": pct,

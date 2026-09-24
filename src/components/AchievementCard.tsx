@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Achievement } from '../types/achievement';
 import { AchievementIcon } from './AchievementIcon';
 import { Pin, Info, Clock, CheckCircle2, Sparkles, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
+import { Focusable } from './deckyUi';
 
 interface AchievementCardProps {
   achievement: Achievement;
@@ -60,8 +61,10 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
     : 0;
 
   return (
-    <div
-      className={`next-card p-4 flex flex-col justify-between h-[195px] relative transition-all duration-200 ${
+    <Focusable
+      focusable={true}
+      onActivate={() => onTogglePin(achievement.id)}
+      className={`next-card p-4 flex flex-col justify-between h-[195px] relative transition-all duration-200 focus:ring-2 focus:ring-[var(--focus-ring)] focus:scale-[1.01] focus:outline-none ${
         achievement.is_pinned
           ? 'border-[var(--accent-gold)] bg-[var(--bg-card)]'
           : achievement.unlocked
@@ -193,6 +196,6 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </Focusable>
   );
 };

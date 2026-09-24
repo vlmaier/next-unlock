@@ -7,9 +7,14 @@ Also inspects running processes to identify the currently active game.
 import os
 import re
 import glob
+import time
 import logging
 
 logger = logging.getLogger("NextUnlock.Parser")
+
+_cached_running_app = {"val": None, "ts": 0}
+_cached_installed_games = {"val": None, "ts": 0}
+_cached_library_folders = {"val": None, "ts": 0}
 
 # Known non-game runtime / tool IDs to filter out
 IGNORED_APP_IDS = {
@@ -48,8 +53,12 @@ def find_all_steam_roots():
     return roots
 
 
-def get_library_folders():
+def get_library_folders(force_refresh=False):
     """Returns list of all steamapps directories across internal storage and SD cards."""
+    now = time.time()
+    if not force_refresh and _cached_library_folders["val"] and (now - _cached_library_folders["ts"] < 60):
+        return _cached_library_folders["val"]
+
     folders = set()
     steam_roots = find_all_steam_roots()
 
@@ -83,7 +92,10 @@ def get_library_folders():
             if os.path.isdir(sd_path):
                 folders.add(sd_path)
 
-    return list(folders)
+    res = list(folders)
+    _cached_library_folders["val"] = res
+    _cached_library_folders["ts"] = now
+    return res
 
 
 def parse_appmanifest(filepath):
@@ -125,11 +137,15 @@ def parse_appmanifest(filepath):
         return None
 
 
-def get_running_steam_appid():
+def get_running_steam_appid(force_refresh=False):
     """
     Detects active running game AppID on SteamOS by checking process environments in /proc.
     Steam sets SteamAppId=<id> for every running game process.
     """
+    now = time.time()
+    if not force_refresh and (now - _cached_running_app["ts"] < 5):
+        return _cached_running_app["val"]
+
     try:
         pids = glob.glob("/proc/[0-9]*")
         for pid_dir in pids:
@@ -148,20 +164,29 @@ def get_running_steam_appid():
                         if val.isdigit():
                             appid = int(val)
                             if appid not in IGNORED_APP_IDS and appid > 0:
+                                _cached_running_app["val"] = appid
+                                _cached_running_app["ts"] = now
                                 return appid
             except Exception:
                 continue
     except Exception as e:
         logger.debug(f"Error checking running Steam app in /proc: {e}")
+
+    _cached_running_app["val"] = None
+    _cached_running_app["ts"] = now
     return None
 
 
-def get_installed_games():
+def get_installed_games(force_refresh=False):
     """
     Scans all Steam library folders and returns installed games.
     If a game is currently running, it is prioritized to the very top.
     """
-    library_folders = get_library_folders()
+    now = time.time()
+    if not force_refresh and _cached_installed_games["val"] and (now - _cached_installed_games["ts"] < 20):
+        return _cached_installed_games["val"]
+
+    library_folders = get_library_folders(force_refresh=force_refresh)
     games_by_id = {}
 
     for folder in library_folders:
@@ -171,7 +196,7 @@ def get_installed_games():
                 if game["appid"] not in games_by_id or game["last_played"] > games_by_id[game["appid"]]["last_played"]:
                     games_by_id[game["appid"]] = game
 
-    running_appid = get_running_steam_appid()
+    running_appid = get_running_steam_appid(force_refresh=force_refresh)
 
     # If running app is not in discovered manifests, add placeholder entry
     if running_appid and running_appid not in games_by_id:
@@ -194,6 +219,8 @@ def get_installed_games():
         return (is_running, g.get("last_played", 0))
 
     games.sort(key=sort_key, reverse=True)
+    _cached_installed_games["val"] = games
+    _cached_installed_games["ts"] = now
     return games
 
 
