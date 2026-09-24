@@ -24,7 +24,7 @@ describe('SteamApiService Test Suite - 100% Execution Path Coverage', () => {
 
       const games = await SteamApiService.getGames();
       expect(games.length).toBeGreaterThan(0);
-      expect(games[0].name).toBe('BALL x PIT');
+      expect(games[0].name).toBe('Elden Ring');
     });
 
     it('should fallback to MockSteamClientService when Decky RPC returns empty/invalid result', async () => {
@@ -81,7 +81,7 @@ describe('SteamApiService Test Suite - 100% Execution Path Coverage', () => {
       __setCallFn(null);
       const games = await SteamApiService.getGames();
       expect(games.length).toBeGreaterThan(0);
-      expect(games[0].name).toBe('BALL x PIT');
+      expect(games[0].name).toBe('Elden Ring');
     });
   });
 });

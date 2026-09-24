@@ -4,6 +4,7 @@ import unittest
 import tempfile
 import shutil
 import asyncio
+from unittest.mock import patch
 
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -77,14 +78,30 @@ class TestBackend(unittest.TestCase):
         res2 = asyncio.run(plugin.toggle_pin("test_ach_1"))
         self.assertFalse(res2["pinned"])
 
-    def test_get_game_details_with_steam_fetcher(self):
+    @patch("main.fetch_achievements_from_steam")
+    def test_get_game_details_with_steam_fetcher(self, mock_fetch):
+        mock_fetch.return_value = {
+            "game_title": "Test Title",
+            "achievements": [
+                {
+                    "id": "ach_test_1",
+                    "name": "Test Achievement",
+                    "description": "Do something cool",
+                    "icon": "",
+                    "unlocked": False,
+                    "global_percentage": 50.0,
+                    "rarity_tier": "common",
+                    "hidden": False,
+                    "rec_score": 75.0,
+                }
+            ],
+        }
         plugin = Plugin()
-        # Test BALL x PIT (2062430)
-        res = asyncio.run(plugin.get_game_details(2062430))
+        res = asyncio.run(plugin.get_game_details(12345))
         self.assertIn("game", res)
         self.assertIn("ranked", res)
-        self.assertGreater(res["game"]["total_achievements"], 0)
-        self.assertEqual(res["game"]["name"], "BALL x PIT")
+        self.assertEqual(res["game"]["total_achievements"], 1)
+        self.assertEqual(res["game"]["name"], "Test Title")
         self.assertGreater(len(res["ranked"]["up_next"]), 0)
 
 

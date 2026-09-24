@@ -16,7 +16,6 @@ from typing import List, Dict, Any, Optional
 logger = logging.getLogger("NextUnlock.Fetcher")
 
 CACHE_DIR = os.path.expanduser("~/.config/next-unlock/cache")
-BUNDLED_CACHE_DIR = os.path.join(os.path.dirname(__file__), "bundled_cache")
 
 
 def get_cache_path(appid: int) -> str:
@@ -24,20 +23,7 @@ def get_cache_path(appid: int) -> str:
 
 
 def load_cached_achievements(appid: int) -> Optional[Dict[str, Any]]:
-    # 1. Try bundled cache directory first (instant, 0ms, works offline)
-    bundled_path = os.path.join(BUNDLED_CACHE_DIR, f"achievements_{appid}.json")
-    if os.path.isfile(bundled_path):
-        try:
-            with open(bundled_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict) and data.get("achievements"):
-                    return data
-                elif isinstance(data, list) and len(data) > 0:
-                    return {"game_title": None, "achievements": data}
-        except Exception as e:
-            logger.debug(f"Failed loading bundled cache for appid {appid}: {e}")
-
-    # 2. Try user persistent cache
+    # User persistent runtime cache
     try:
         path = get_cache_path(appid)
         if os.path.isfile(path):

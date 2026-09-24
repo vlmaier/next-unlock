@@ -1,31 +1,6 @@
-import { Game, RankedAchievements, Achievement } from '../types/achievement';
-import ballxpitData from '../data/ballxpit_achievements.json';
-
-const ballxpitAchievements: Achievement[] = (ballxpitData.achievements as any[]).map((a) => ({
-  id: a.id,
-  name: a.name,
-  description: a.description || '',
-  icon: a.icon || '',
-  unlocked: !!a.unlocked,
-  unlock_time: a.unlock_time || null,
-  global_percentage: typeof a.global_percentage === 'number' ? a.global_percentage : 0,
-  rarity_tier: (a.global_percentage <= 5 ? 'ultra_rare' : a.global_percentage <= 15 ? 'rare' : 'common') as any,
-  category: a.category || 'Up Next',
-  hidden: !!a.hidden,
-  hint: a.hint || a.description || '',
-  rec_score: typeof a.rec_score === 'number' ? a.rec_score : 50,
-}));
+import { Game, RankedAchievements } from '../types/achievement';
 
 const INITIAL_MOCK_GAMES: Game[] = [
-  {
-    appid: 2062430,
-    name: 'BALL x PIT',
-    header_image: ballxpitData.header_image || 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2062430/5e7885a3802fe7d38b92fdeb44888b4828a842ba/header_alt_assets_2.jpg?t=1789453342',
-    total_achievements: ballxpitAchievements.length,
-    unlocked_count: ballxpitAchievements.filter((a) => a.unlocked).length,
-    completion_percentage: 0,
-    achievements: ballxpitAchievements,
-  },
   {
     appid: 1245620,
     name: 'Elden Ring',
