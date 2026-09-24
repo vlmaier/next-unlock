@@ -6,10 +6,16 @@
 
 ## Installation
 
-Run in Steam Deck Desktop Mode terminal (Konsole):
+Run in Steam Deck Desktop Mode terminal (Konsole). Because the repository is private, pass your GitHub Personal Access Token (classic `repo` scope or fine-grained with `contents:read`):
 
 ```bash
-curl -L https://raw.githubusercontent.com/vlmaier/next-unlock/main/next-unlock.zip -o /tmp/next-unlock.zip && unzip -o /tmp/next-unlock.zip -d ~/homebrew/plugins/ && sudo systemctl restart plugin_loader
+GITHUB_TOKEN="your_token_here" && curl -H "Authorization: token $GITHUB_TOKEN" -L https://raw.githubusercontent.com/vlmaier/next-unlock/main/next-unlock.zip -o /tmp/next-unlock.zip && unzip -o /tmp/next-unlock.zip -d ~/homebrew/plugins/ && sudo systemctl restart plugin_loader
+```
+
+Or interactively (prompt for token without saving to shell history):
+
+```bash
+read -sp "GitHub Token: " GITHUB_TOKEN && echo && curl -H "Authorization: token $GITHUB_TOKEN" -L https://raw.githubusercontent.com/vlmaier/next-unlock/main/next-unlock.zip -o /tmp/next-unlock.zip && unzip -o /tmp/next-unlock.zip -d ~/homebrew/plugins/ && sudo systemctl restart plugin_loader
 ```
 
 ---
