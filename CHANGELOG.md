@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/vlmaier/next-unlock/compare/v2.3.6...v2.4.0) (2026-11-15)
+
+
+### Features
+
+* merge SteamOS collectionStore/appStore owned library games so all 242+ games sync ([1840f2c](https://github.com/vlmaier/next-unlock/commit/1840f2cb2c67bfc86e2cbf070366b2d898aadd4b))
+
 ## [2.3.6](https://github.com/vlmaier/next-unlock/compare/v2.3.5...v2.3.6) (2026-11-15)
 
 

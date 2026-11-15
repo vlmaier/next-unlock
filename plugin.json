@@ -2,7 +2,7 @@
   "name": "Next Unlock",
   "author": "Vladas Maier",
   "flags": [],
-  "version": "2.3.6",
+  "version": "2.4.0",
   "description": "Smart achievement tracking, progress dashboards, and 'Up Next' recommendations for Steam Deck.",
   "main": "main.py"
 }
