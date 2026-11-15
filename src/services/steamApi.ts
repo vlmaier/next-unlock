@@ -855,7 +855,7 @@ export class SteamApiService {
         try {
           const res = await withTimeout(
             forceRefresh ? callFn('get_game_details', appid, true) : callFn('get_game_details', appid),
-            12000,
+            20000,
             null
           );
           const data = res && res.result !== undefined ? res.result : res;
