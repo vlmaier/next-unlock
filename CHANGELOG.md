@@ -1,3 +1,10 @@
+## [2.3.2](https://github.com/vlmaier/next-unlock/compare/v2.3.1...v2.3.2) (2026-11-15)
+
+
+### Bug Fixes
+
+* use atomic cache writes to prevent concurrent JSON corruption ([af9ee6a](https://github.com/vlmaier/next-unlock/commit/af9ee6ac518cf35f8812a40d8eda5c060b772ee0))
+
 ## [2.3.1](https://github.com/vlmaier/next-unlock/compare/v2.3.0...v2.3.1) (2026-11-15)
 
 
