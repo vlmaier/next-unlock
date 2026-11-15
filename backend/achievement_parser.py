@@ -25,7 +25,7 @@ from backend.models import (
     GameData,
     LocalUserStatsEnvelope,
 )
-from backend.recommendation import compute_recommendation_score
+from backend.recommendation import compute_achievement_sets, compute_recommendation_score
 
 logger = logging.getLogger("next_unlock.parser")
 
@@ -392,6 +392,7 @@ def parse_appmanifest(filepath: str) -> GameData | None:
             (cached_ach["header_image"] if cached_ach else None)
             or f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg"
         )
+        raw_sets = cached_ach.get("achievement_sets") if cached_ach else None
 
         return {
             "appid": appid,
@@ -402,6 +403,7 @@ def parse_appmanifest(filepath: str) -> GameData | None:
             "unlocked_count": unlocked_count,
             "completion_percentage": pct,
             "achievements": ach_list,
+            "achievement_sets": compute_achievement_sets(ach_list, raw_sets),
         }
     except Exception as e:
         logger.debug(f"Failed parsing manifest {filepath}: {e}")

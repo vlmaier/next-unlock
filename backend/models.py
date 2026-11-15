@@ -19,6 +19,10 @@ class _AchievementOptional(TypedDict, total=False):
     is_pinned: bool
     rec_score: float
     progress: AchievementProgress
+    set_id: int
+    set_name: str
+    dlc_appid: int
+    archived: bool
 
 
 class AchievementData(_AchievementOptional):
@@ -33,6 +37,20 @@ class AchievementData(_AchievementOptional):
     hidden: bool
 
 
+class _AchievementSetOptional(TypedDict, total=False):
+    dlc_appid: int
+    archived: bool
+    header_image: str
+
+
+class AchievementSetData(_AchievementSetOptional):
+    id: int
+    name: str
+    total_achievements: int
+    unlocked_count: int
+    completion_percentage: float
+
+
 class RankedAchievementsData(TypedDict):
     pinned: list[AchievementData]
     up_next: list[AchievementData]
@@ -45,6 +63,7 @@ class RankedAchievementsData(TypedDict):
 
 class _GameOptional(TypedDict, total=False):
     last_played: int
+    achievement_sets: list[AchievementSetData]
 
 
 class GameData(_GameOptional):
@@ -62,14 +81,22 @@ class GameDetailsResponse(TypedDict):
     ranked: RankedAchievementsData
 
 
-class FetchedAchievementsEnvelope(TypedDict):
+class _EnvelopeOptional(TypedDict, total=False):
+    achievement_sets: list[AchievementSetData]
+
+
+class FetchedAchievementsEnvelope(_EnvelopeOptional):
     appid: int
     game_title: str | None
     header_image: str | None
     achievements: list[AchievementData]
 
 
-class ParsedCommunityHtmlResult(TypedDict):
+class _ParsedHtmlOptional(TypedDict, total=False):
+    achievement_sets: list[AchievementSetData]
+
+
+class ParsedCommunityHtmlResult(_ParsedHtmlOptional):
     game_title: str | None
     header_image: str | None
     achievements: list[AchievementData]

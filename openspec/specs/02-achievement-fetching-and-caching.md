@@ -12,11 +12,36 @@ Defines how achievement schemas and global rarity stats are fetched from Steam C
 2. **Cache Location**:
    - Controlled by `NEXT_UNLOCK_CACHE_DIR` env var or defaults to `~/.config/next-unlock/cache`.
    - File path: `achievements_<appid>.json`.
-2. **Canonical Disk Cache Schema**:
+2. **Canonical Disk Cache Schema & Steam Achievement Sets (`schema_v2` `groups`)**:
+   - Valve's Steam Achievements overhaul (`schema_v2` in `<script id="valve-ssr-data">`) organizes achievements into `groups` (Achievement Sets: Base Game, DLC expansions via `dlcappid > 0`, thematic sets, and `archived: true` retired sets/achievements).
+   - `_parse_valve_ssr_data` MUST match `StoreItem` metadata by the base `appid` (so DLC `StoreItem` entries in the same SSR payload do not overwrite the base game's title or header image), while using DLC `StoreItem` assets to populate `header_image` on DLC sets.
+   - Each achievement carries optional set metadata:
+     - `set_id`: `int` (`groupid`, default `0`)
+     - `set_name`: `str` (`"Base Game"` when `id == 0` and `name == ""`, or the group's display name)
+     - `dlc_appid`: `int` (when `dlcappid > 0`)
+     - `archived`: `bool` (`True` if the achievement or its parent set is retired/archived)
+   - Each game envelope and `GameData` payload includes `achievement_sets`:
    ```json
    {
      "appid": 1245620,
      "game_title": "Elden Ring",
+     "achievement_sets": [
+       {
+         "id": 0,
+         "name": "Base Game",
+         "total_achievements": 4,
+         "unlocked_count": 2,
+         "completion_percentage": 50.0
+       },
+       {
+         "id": 1,
+         "name": "Shadow of the Erdtree",
+         "dlc_appid": 2778580,
+         "total_achievements": 2,
+         "unlocked_count": 0,
+         "completion_percentage": 0.0
+       }
+     ],
      "achievements": [
        {
          "id": "ach_elden_lord",
@@ -28,13 +53,15 @@ Defines how achievement schemas and global rarity stats are fetched from Steam C
          "global_percentage": 24.5,
          "rarity_tier": "common",
          "hidden": false,
-         "rec_score": 37.3
+         "set_id": 0,
+         "set_name": "Base Game",
+         "rec_score": 34.6
        }
      ]
    }
    ```
-   - `save_cached_achievements(appid, payload)` MUST always persist the dictionary `{"appid": appid, "game_title": game_title, "achievements": achievements}`.
-   - `load_cached_achievements(appid)` MUST normalize legacy list caches into `{"appid": appid, "game_title": None, "achievements": list}` and NEVER double-wrap dictionaries on network failure fallback.
+   - `save_cached_achievements(appid, payload)` MUST always persist `{"appid": appid, "game_title": game_title, "achievements": achievements, "achievement_sets": achievement_sets}`.
+   - `load_cached_achievements(appid)` MUST normalize legacy list caches into `{"appid": appid, "game_title": None, "achievements": list}` and synthesize/recompute `achievement_sets` from achievement `set_id`/`set_name` fields when needed.
 3. **Force Refresh**:
    - `fetch_achievements_from_steam(appid, force_refresh=False)` bypasses the disk cache before making the HTTP request when `force_refresh=True`, falling back to disk cache only if the HTTP request fails.
 4. **No Fake Hints**:

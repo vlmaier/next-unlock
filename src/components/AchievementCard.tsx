@@ -121,6 +121,22 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
             <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${rarity.badgeClass}`}>
               {rarity.label}
             </span>
+            {achievement.set_name && (achievement.dlc_appid || achievement.set_name !== 'Base Game') && (
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${
+                  achievement.dlc_appid
+                    ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                    : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
+                }`}
+              >
+                {achievement.dlc_appid ? `DLC · ${achievement.set_name}` : achievement.set_name}
+              </span>
+            )}
+            {achievement.archived && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400 border border-slate-600/50 font-semibold">
+                Archived
+              </span>
+            )}
             {achievement.hidden && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium">
                 Secret

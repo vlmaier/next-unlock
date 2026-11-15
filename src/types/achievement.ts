@@ -32,6 +32,21 @@ export interface Achievement {
   hint?: string;
   is_pinned?: boolean;
   rec_score?: number;
+  set_id?: number;
+  set_name?: string;
+  dlc_appid?: number;
+  archived?: boolean;
+}
+
+export interface AchievementSet {
+  id: number;
+  name: string;
+  dlc_appid?: number;
+  archived?: boolean;
+  header_image?: string;
+  total_achievements: number;
+  unlocked_count: number;
+  completion_percentage: number;
 }
 
 export interface RankedAchievements {
@@ -53,4 +68,5 @@ export interface Game {
   unlocked_count: number;
   completion_percentage: number;
   achievements: Achievement[];
+  achievement_sets?: AchievementSet[];
 }

@@ -38,7 +38,7 @@ from backend.models import (  # noqa: E402
     SyncUnlockedResponse,
     TogglePinResponse,
 )
-from backend.recommendation import rank_achievements  # noqa: E402
+from backend.recommendation import compute_achievement_sets, rank_achievements  # noqa: E402
 
 try:
     import decky  # type: ignore
@@ -164,6 +164,9 @@ class Plugin:
                     "unlocked_count": u_count,
                     "completion_percentage": pct,
                     "achievements": scored_achs,
+                    "achievement_sets": compute_achievement_sets(
+                        scored_achs, g.get("achievement_sets")
+                    ),
                 }
                 if "last_played" in g:
                     game_copy["last_played"] = g["last_played"]
@@ -265,6 +268,9 @@ class Plugin:
             "unlocked_count": unlocked_count,
             "completion_percentage": pct,
             "achievements": scored_achievements,
+            "achievement_sets": compute_achievement_sets(
+                scored_achievements, fetched.get("achievement_sets")
+            ),
         }
 
         return {"game": target_game, "ranked": ranked}

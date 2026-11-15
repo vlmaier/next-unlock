@@ -1,6 +1,7 @@
 """
 Rich, internally-consistent mock dataset for Next Unlock development and testing.
-Matches src/services/mockSteamClient.ts 1:1 for deterministic full-stack testing.
+Matches src/services/mockSteamClient.ts 1:1 for deterministic full-stack testing,
+including Steam's Achievement Sets overhaul (Base Game vs DLC / Content Update sets).
 """
 
 from __future__ import annotations
@@ -15,6 +16,23 @@ MOCK_GAMES: list[GameData] = [
         "total_achievements": 6,
         "unlocked_count": 2,
         "completion_percentage": 33.3,
+        "achievement_sets": [
+            {
+                "id": 0,
+                "name": "Base Game",
+                "total_achievements": 4,
+                "unlocked_count": 2,
+                "completion_percentage": 50.0,
+            },
+            {
+                "id": 1,
+                "name": "Shadow of the Erdtree",
+                "dlc_appid": 2778580,
+                "total_achievements": 2,
+                "unlocked_count": 0,
+                "completion_percentage": 0.0,
+            },
+        ],
         "achievements": [
             {
                 "id": "ACH_MARGIT",
@@ -27,6 +45,8 @@ MOCK_GAMES: list[GameData] = [
                 "rarity_tier": "common",
                 "category": "Story",
                 "hidden": False,
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_ELDEN_LORD",
@@ -39,6 +59,8 @@ MOCK_GAMES: list[GameData] = [
                 "rarity_tier": "common",
                 "category": "Story",
                 "hidden": False,
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_LEGENDARY_ARMAMENTS",
@@ -51,6 +73,8 @@ MOCK_GAMES: list[GameData] = [
                 "rarity_tier": "rare",
                 "hidden": False,
                 "progress": {"current": 8, "max": 9},
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_GODDEVOURING_SERPENT",
@@ -62,6 +86,8 @@ MOCK_GAMES: list[GameData] = [
                 "global_percentage": 35.8,
                 "rarity_tier": "common",
                 "hidden": False,
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_AGE_OF_STARS",
@@ -74,6 +100,9 @@ MOCK_GAMES: list[GameData] = [
                 "rarity_tier": "common",
                 "category": "Missable",
                 "hidden": True,
+                "set_id": 1,
+                "set_name": "Shadow of the Erdtree",
+                "dlc_appid": 2778580,
             },
             {
                 "id": "ACH_MALENIA",
@@ -85,6 +114,9 @@ MOCK_GAMES: list[GameData] = [
                 "global_percentage": 4.1,
                 "rarity_tier": "ultra_rare",
                 "hidden": False,
+                "set_id": 1,
+                "set_name": "Shadow of the Erdtree",
+                "dlc_appid": 2778580,
             },
         ],
     },
@@ -95,6 +127,23 @@ MOCK_GAMES: list[GameData] = [
         "total_achievements": 4,
         "unlocked_count": 1,
         "completion_percentage": 25.0,
+        "achievement_sets": [
+            {
+                "id": 0,
+                "name": "Base Game",
+                "total_achievements": 3,
+                "unlocked_count": 1,
+                "completion_percentage": 33.3,
+            },
+            {
+                "id": 1,
+                "name": "Phantom Liberty",
+                "dlc_appid": 2138330,
+                "total_achievements": 1,
+                "unlocked_count": 0,
+                "completion_percentage": 0.0,
+            },
+        ],
         "achievements": [
             {
                 "id": "ACH_THE_FOOL",
@@ -106,6 +155,8 @@ MOCK_GAMES: list[GameData] = [
                 "global_percentage": 88.5,
                 "rarity_tier": "common",
                 "hidden": False,
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_AUTOPILOT",
@@ -118,6 +169,8 @@ MOCK_GAMES: list[GameData] = [
                 "rarity_tier": "common",
                 "hidden": False,
                 "progress": {"current": 2, "max": 3},
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_CITY_LIGHTS",
@@ -130,6 +183,8 @@ MOCK_GAMES: list[GameData] = [
                 "rarity_tier": "common",
                 "hidden": False,
                 "progress": {"current": 9, "max": 12},
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_NIGHT_CITY_LEGEND",
@@ -141,6 +196,9 @@ MOCK_GAMES: list[GameData] = [
                 "global_percentage": 3.8,
                 "rarity_tier": "ultra_rare",
                 "hidden": False,
+                "set_id": 1,
+                "set_name": "Phantom Liberty",
+                "dlc_appid": 2138330,
             },
         ],
     },
@@ -151,6 +209,22 @@ MOCK_GAMES: list[GameData] = [
         "total_achievements": 4,
         "unlocked_count": 2,
         "completion_percentage": 50.0,
+        "achievement_sets": [
+            {
+                "id": 0,
+                "name": "Base Game",
+                "total_achievements": 2,
+                "unlocked_count": 2,
+                "completion_percentage": 100.0,
+            },
+            {
+                "id": 1,
+                "name": "The Olympic Update",
+                "total_achievements": 2,
+                "unlocked_count": 0,
+                "completion_percentage": 0.0,
+            },
+        ],
         "achievements": [
             {
                 "id": "ACH_EREBUS",
@@ -162,6 +236,8 @@ MOCK_GAMES: list[GameData] = [
                 "global_percentage": 68.8,
                 "rarity_tier": "common",
                 "hidden": False,
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_CHRONOS_DOWN",
@@ -173,6 +249,8 @@ MOCK_GAMES: list[GameData] = [
                 "global_percentage": 32.1,
                 "rarity_tier": "common",
                 "hidden": False,
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_TARTARUS",
@@ -184,6 +262,8 @@ MOCK_GAMES: list[GameData] = [
                 "global_percentage": 46.8,
                 "rarity_tier": "common",
                 "hidden": False,
+                "set_id": 1,
+                "set_name": "The Olympic Update",
             },
             {
                 "id": "ACH_ALL_ASPECTS",
@@ -196,6 +276,8 @@ MOCK_GAMES: list[GameData] = [
                 "rarity_tier": "rare",
                 "hidden": False,
                 "progress": {"current": 5, "max": 6},
+                "set_id": 1,
+                "set_name": "The Olympic Update",
             },
         ],
     },
@@ -206,6 +288,23 @@ MOCK_GAMES: list[GameData] = [
         "total_achievements": 4,
         "unlocked_count": 4,
         "completion_percentage": 100.0,
+        "achievement_sets": [
+            {
+                "id": 0,
+                "name": "Base Game",
+                "total_achievements": 3,
+                "unlocked_count": 3,
+                "completion_percentage": 100.0,
+            },
+            {
+                "id": 1,
+                "name": "Godmaster",
+                "dlc_appid": 877280,
+                "total_achievements": 1,
+                "unlocked_count": 1,
+                "completion_percentage": 100.0,
+            },
+        ],
         "achievements": [
             {
                 "id": "ACH_CHARMED",
@@ -217,6 +316,8 @@ MOCK_GAMES: list[GameData] = [
                 "global_percentage": 76.7,
                 "rarity_tier": "common",
                 "hidden": False,
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_PROTECTED",
@@ -228,6 +329,8 @@ MOCK_GAMES: list[GameData] = [
                 "global_percentage": 47.7,
                 "rarity_tier": "common",
                 "hidden": False,
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_HOLLOW_KNIGHT",
@@ -239,6 +342,8 @@ MOCK_GAMES: list[GameData] = [
                 "global_percentage": 26.4,
                 "rarity_tier": "common",
                 "hidden": False,
+                "set_id": 0,
+                "set_name": "Base Game",
             },
             {
                 "id": "ACH_PANTHEON_5",
@@ -250,6 +355,9 @@ MOCK_GAMES: list[GameData] = [
                 "global_percentage": 2.9,
                 "rarity_tier": "ultra_rare",
                 "hidden": False,
+                "set_id": 1,
+                "set_name": "Godmaster",
+                "dlc_appid": 877280,
             },
         ],
     },
@@ -272,4 +380,5 @@ def get_mock_game_by_id(appid: int) -> GameData:
         "unlocked_count": 0,
         "completion_percentage": 0.0,
         "achievements": [],
+        "achievement_sets": [],
     }

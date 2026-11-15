@@ -15,6 +15,8 @@ For every **locked** achievement (`unlocked == false`):
 3. **Visibility Bonus (`visibility_bonus`)**:
    - `15.0` if `not hidden and bool(description.strip())` else `0.0` (visible achievements with clear objectives are much more actionable than secret achievements with hidden descriptions).
 4. **Canonical Score (`rec_score`)**:
+   - If `unlocked == true` or `archived == true` (retired achievement/set in Steam's Achievement Sets overhaul): `rec_score = 0.0`.
+   - Otherwise:
    ```
    rec_score = round((ratio * 60.0) + (global_pct * 0.8) + visibility_bonus, 1)
    ```
@@ -22,15 +24,16 @@ For every **locked** achievement (`unlocked == false`):
      - An achievement that is 80% complete (`ratio = 0.8 -> +48 pts`) or unlocked by 65% of players (`65 * 0.8 = +52 pts`) scores high (`~67-100+`) and surfaces at the top of **Up Next**.
      - A brutal 0.5% endgame grind with 0 progress scores `0 + 0.4 + 15 = 15.4` and stays at the bottom.
      - A hidden 1.2% achievement with no description scores `0.96` and stays at the very bottom.
+     - An `archived: true` retired achievement scores `0.0` and is excluded from active recommendation buckets (`up_next`, `almost_there`, `easy_grabs`) so unobtainable achievements never block or pollute recommendations.
 
 ## 3. Category Definitions (`RankedAchievements`)
 Given a list of achievements and `pinned_ids`:
 - `unlocked`: All achievements where `unlocked == True`, sorted by `unlock_time` descending (then `global_percentage` ascending).
 - `locked`: All achievements where `unlocked == False`, sorted by `rec_score` descending (tie-broken by `global_percentage` descending, then `name` ascending).
 - `pinned`: Locked achievements where `id in pinned_ids`, sorted by `rec_score` descending.
-- `up_next`: Top 5 locked achievements from `locked` (excluding hidden achievements that have no description and zero progress, unless no other locked achievements exist), sorted by `rec_score` descending.
-- `almost_there`: Locked achievements with `progress.max > 1` and `ratio >= 0.5` (50%+ progress toward a multi-step goal), sorted by `ratio` descending.
-- `easy_grabs`: Locked achievements with `global_percentage >= 25.0`, sorted by `global_percentage` descending.
+- `up_next`: Top 5 locked, non-archived (`not archived`) achievements from `locked` (excluding hidden achievements that have no description and zero progress, unless no other locked non-archived achievements exist), sorted by `rec_score` descending.
+- `almost_there`: Locked, non-archived achievements with `progress.max > 1` and `ratio >= 0.5` (50%+ progress toward a multi-step goal), sorted by `ratio` descending.
+- `easy_grabs`: Locked, non-archived achievements with `global_percentage >= 25.0`, sorted by `global_percentage` descending.
 - `missable` (Displayed as **"Secret / Rare"** when no explicit Missable tag is present): Locked achievements where `hidden == True` or `category == "Missable"` or `global_percentage <= 10.0`, sorted by `rec_score` descending.
 
 ## 4. Pinning & Persistence Contract

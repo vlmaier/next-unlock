@@ -7,7 +7,7 @@ import { SearchBar } from './SearchBar';
 import { GameSelector } from './GameSelector';
 import { Trophy, Award, CheckCircle2, ListFilter, Sparkles, Layers, Gamepad2, RefreshCw, ArrowLeft } from 'lucide-react';
 import { Focusable } from './deckyUi';
-import { rankAchievements } from '../services/steamApi';
+import { rankAchievements, computeAchievementSets } from '../services/steamApi';
 
 interface FullDashboardProps {
   games: Game[];
@@ -35,14 +35,30 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
   onBack,
 }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryFilterType>('all');
+  const [activeSetId, setActiveSetId] = useState<number | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [imgIdx, setImgIdx] = useState(0);
 
   useEffect(() => {
     setImgIdx(0);
-  }, [selectedGame?.appid]);
+    setActiveSetId('all');
+  }, [selectedGame?.appid, selectedAppId]);
 
   const isAllGamesMode = selectedAppId === 'all';
+
+  // Compute Steam Achievement Sets for the currently selected game
+  const achievementSets = useMemo(() => {
+    if (isAllGamesMode || !selectedGame) return [];
+    return computeAchievementSets(
+      selectedGame.achievements || [],
+      selectedGame.achievement_sets
+    );
+  }, [isAllGamesMode, selectedGame]);
+
+  const activeSet = useMemo(() => {
+    if (activeSetId === 'all') return null;
+    return achievementSets.find((s) => s.id === activeSetId) || null;
+  }, [achievementSets, activeSetId]);
 
   // Aggregate stats and canonical ranking across all games when in 'all' mode
   const allGamesStats = useMemo(() => {
@@ -111,7 +127,18 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
     };
   }, [games, selectedGame]);
 
-  const activeRanked = isAllGamesMode ? allGamesStats.ranked : ranked;
+  // Compute canonical ranking for the selected Set (or entire game / library)
+  const activeRanked = useMemo(() => {
+    if (isAllGamesMode) return allGamesStats.ranked;
+    if (!selectedGame || activeSetId === 'all') return ranked;
+
+    const pinnedSet = new Set<string>();
+    const setAchs = (selectedGame.achievements || []).filter((a) => {
+      if (a.is_pinned) pinnedSet.add(a.id);
+      return (typeof a.set_id === 'number' ? a.set_id : 0) === activeSetId;
+    });
+    return rankAchievements(setAchs, pinnedSet);
+  }, [isAllGamesMode, allGamesStats.ranked, selectedGame, activeSetId, ranked]);
 
   // Compute category counts using the single canonical ranking structure
   const counts = useMemo(() => {
@@ -167,7 +194,8 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
       (a) =>
         a.name.toLowerCase().includes(q) ||
         a.description.toLowerCase().includes(q) ||
-        (a.gameName && a.gameName.toLowerCase().includes(q))
+        (a.gameName && a.gameName.toLowerCase().includes(q)) ||
+        (a.set_name && a.set_name.toLowerCase().includes(q))
     );
   }, [activeRanked, activeCategory, searchQuery]);
 
@@ -182,6 +210,22 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
   }, [selectedGame]);
 
   const currentImg = imgIdx < imageCandidates.length ? imageCandidates[imgIdx] : null;
+
+  const ringUnlocked = isAllGamesMode
+    ? allGamesStats.unlockedAch
+    : activeSet
+    ? activeSet.unlocked_count
+    : selectedGame?.unlocked_count || 0;
+  const ringTotal = isAllGamesMode
+    ? allGamesStats.totalAch
+    : activeSet
+    ? activeSet.total_achievements
+    : selectedGame?.total_achievements || 0;
+  const ringPct = isAllGamesMode
+    ? allGamesStats.completion
+    : activeSet
+    ? activeSet.completion_percentage
+    : selectedGame?.completion_percentage || 0;
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-5 p-4 md:p-6">
@@ -240,108 +284,217 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
       )}
 
       {/* Hero Summary Card */}
-      <div className="next-card p-4 md:p-5 flex flex-col md:flex-row items-center justify-between gap-5 bg-[#161f2c]">
-        {isAllGamesMode ? (
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            <div
-              style={{ width: 156, height: 73 }}
-              className="rounded-lg bg-[#0e141b] border border-[#2e3d52] flex items-center justify-center text-[#389fff] flex-shrink-0"
-            >
-              <Layers className="w-8 h-8" />
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-[#389fff] uppercase tracking-wider bg-[#0e141b] px-2 py-0.5 rounded border border-[#2e3d52]">
-                Library Overview
-              </span>
-              <h2 className="text-lg md:text-xl font-black text-slate-100 mt-1 tracking-tight">
-                All Installed Games
-              </h2>
-              <div className="flex items-center gap-4 mt-1.5 text-xs text-slate-300 font-semibold flex-wrap">
-                <span className="flex items-center gap-1.5">
-                  <Award className="w-4 h-4 text-[#eab308]" /> {allGamesStats.unlockedAch} / {allGamesStats.totalAch} Unlocked
-                </span>
-                <span className="flex items-center gap-1.5 text-[#10b981]">
-                  <CheckCircle2 className="w-4 h-4 text-[#10b981]" /> {games.length} Games in Library
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : selectedGame ? (
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            {currentImg ? (
-              <img
-                src={currentImg}
-                alt={selectedGame.name}
-                onError={() => setImgIdx((prev) => prev + 1)}
-                style={{ width: 156, height: 73 }}
-                className="rounded-lg object-cover border border-[#2e3d52] shadow-md flex-shrink-0"
-              />
-            ) : (
+      <div className="next-card p-4 md:p-5 flex flex-col gap-4 bg-[#161f2c]">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-5">
+          {isAllGamesMode ? (
+            <div className="flex items-center gap-4 w-full md:w-auto">
               <div
                 style={{ width: 156, height: 73 }}
-                className="rounded-lg bg-[#0e141b] border border-[#2e3d52] flex flex-col items-center justify-center text-[#389fff] p-2 flex-shrink-0"
+                className="rounded-lg bg-[#0e141b] border border-[#2e3d52] flex items-center justify-center text-[#389fff] flex-shrink-0"
               >
-                <Gamepad2 className="w-6 h-6 mb-1" />
-                <span className="text-[10px] font-bold text-center text-slate-200 truncate max-w-full">
-                  {selectedGame.name}
-                </span>
+                <Layers className="w-8 h-8" />
               </div>
-            )}
-
-            <div>
-              {isRunningGame ? (
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-emerald-500/15 text-emerald-300 border-emerald-500/30 inline-block mb-1">
-                  Running Now
+              <div>
+                <span className="text-[10px] font-bold text-[#389fff] uppercase tracking-wider bg-[#0e141b] px-2 py-0.5 rounded border border-[#2e3d52]">
+                  Library Overview
                 </span>
-              ) : selectedGame.total_achievements > 0 &&
-                selectedGame.unlocked_count >= selectedGame.total_achievements ? (
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-amber-500/15 text-amber-300 border-amber-500/30 inline-block mb-1">
-                  100% Completed
-                </span>
-              ) : null}
-              <h2 className="text-lg md:text-xl font-black text-slate-100 tracking-tight">
-                {selectedGame.name}
-              </h2>
-              <div className="flex items-center gap-4 mt-1.5 text-xs text-slate-300 font-semibold flex-wrap">
-                <span className="flex items-center gap-1.5">
-                  <Award className="w-4 h-4 text-[#eab308]" /> {selectedGame.unlocked_count} of {selectedGame.total_achievements} Unlocked
-                </span>
-                <span className="flex items-center gap-1.5 text-[#10b981]">
-                  <CheckCircle2 className="w-4 h-4 text-[#10b981]" /> {Math.round(selectedGame.completion_percentage)}% Completed
-                </span>
+                <h2 className="text-lg md:text-xl font-black text-slate-100 mt-1 tracking-tight">
+                  All Installed Games
+                </h2>
+                <div className="flex items-center gap-4 mt-1.5 text-xs text-slate-300 font-semibold flex-wrap">
+                  <span className="flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-[#eab308]" /> {allGamesStats.unlockedAch} / {allGamesStats.totalAch} Unlocked
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[#10b981]">
+                    <CheckCircle2 className="w-4 h-4 text-[#10b981]" /> {games.length} Games in Library
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="text-xs text-slate-400 py-4">No game selected.</div>
-        )}
-
-        {/* Completion Progress Ring */}
-        {(isAllGamesMode || selectedGame) && (
-          <div className="flex items-center gap-4 bg-[#0e141b] px-4 py-3 rounded-lg border border-[#2e3d52] w-full md:w-auto justify-between md:justify-start">
-            <ProgressRing
-              percentage={isAllGamesMode ? allGamesStats.completion : (selectedGame?.completion_percentage || 0)}
-              unlockedCount={isAllGamesMode ? allGamesStats.unlockedAch : (selectedGame?.unlocked_count || 0)}
-              totalCount={isAllGamesMode ? allGamesStats.totalAch : (selectedGame?.total_achievements || 0)}
-              size={76}
-              strokeWidth={7}
-            />
-            <div className="text-xs flex flex-col gap-1 min-w-0">
-              <span className="font-bold text-slate-100">
-                {isAllGamesMode ? 'Library Progress' : 'Game Completion'}
-              </span>
-              <span className="text-slate-400 text-[11px] font-medium">
-                {isAllGamesMode
-                  ? Math.max(0, allGamesStats.totalAch - allGamesStats.unlockedAch)
-                  : Math.max(0, (selectedGame?.total_achievements || 0) - (selectedGame?.unlocked_count || 0))}{' '}
-                remaining
-              </span>
-              {activeRanked && activeRanked.up_next.length > 0 && (
-                <span className="text-[11px] text-[#389fff] font-bold flex items-center gap-1 mt-0.5 truncate max-w-[220px]">
-                  <Sparkles className="w-3.5 h-3.5 flex-shrink-0" /> Next: {activeRanked.up_next[0].name} ({activeRanked.up_next[0].global_percentage}%)
-                </span>
+          ) : selectedGame ? (
+            <div className="flex items-center gap-4 w-full md:w-auto">
+              {currentImg ? (
+                <img
+                  src={currentImg}
+                  alt={selectedGame.name}
+                  onError={() => setImgIdx((prev) => prev + 1)}
+                  style={{ width: 156, height: 73 }}
+                  className="rounded-lg object-cover border border-[#2e3d52] shadow-md flex-shrink-0"
+                />
+              ) : (
+                <div
+                  style={{ width: 156, height: 73 }}
+                  className="rounded-lg bg-[#0e141b] border border-[#2e3d52] flex flex-col items-center justify-center text-[#389fff] p-2 flex-shrink-0"
+                >
+                  <Gamepad2 className="w-6 h-6 mb-1" />
+                  <span className="text-[10px] font-bold text-center text-slate-200 truncate max-w-full">
+                    {selectedGame.name}
+                  </span>
+                </div>
               )}
+
+              <div>
+                {isRunningGame ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-emerald-500/15 text-emerald-300 border-emerald-500/30 inline-block mb-1">
+                    Running Now
+                  </span>
+                ) : selectedGame.total_achievements > 0 &&
+                  selectedGame.unlocked_count >= selectedGame.total_achievements ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-amber-500/15 text-amber-300 border-amber-500/30 inline-block mb-1">
+                    100% Completed
+                  </span>
+                ) : null}
+                <h2 className="text-lg md:text-xl font-black text-slate-100 tracking-tight">
+                  {selectedGame.name}
+                </h2>
+                <div className="flex items-center gap-4 mt-1.5 text-xs text-slate-300 font-semibold flex-wrap">
+                  <span className="flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-[#eab308]" /> {ringUnlocked} of {ringTotal} Unlocked
+                    {activeSet ? ` (${activeSet.name})` : ''}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[#10b981]">
+                    <CheckCircle2 className="w-4 h-4 text-[#10b981]" /> {Math.round(ringPct)}% Completed
+                  </span>
+                </div>
+              </div>
             </div>
+          ) : (
+            <div className="text-xs text-slate-400 py-4">No game selected.</div>
+          )}
+
+          {/* Completion Progress Ring */}
+          {(isAllGamesMode || selectedGame) && (
+            <div className="flex items-center gap-4 bg-[#0e141b] px-4 py-3 rounded-lg border border-[#2e3d52] w-full md:w-auto justify-between md:justify-start">
+              <ProgressRing
+                percentage={ringPct}
+                unlockedCount={ringUnlocked}
+                totalCount={ringTotal}
+                size={76}
+                strokeWidth={7}
+              />
+              <div className="text-xs flex flex-col gap-1 min-w-0">
+                <span className="font-bold text-slate-100">
+                  {isAllGamesMode
+                    ? 'Library Progress'
+                    : activeSet
+                    ? `Set: ${activeSet.name}`
+                    : 'Game Completion'}
+                </span>
+                <span className="text-slate-400 text-[11px] font-medium">
+                  {Math.max(0, ringTotal - ringUnlocked)} remaining
+                </span>
+                {activeRanked && activeRanked.up_next.length > 0 && (
+                  <span className="text-[11px] text-[#389fff] font-bold flex items-center gap-1 mt-0.5 truncate max-w-[220px]">
+                    <Sparkles className="w-3.5 h-3.5 flex-shrink-0" /> Next: {activeRanked.up_next[0].name} ({activeRanked.up_next[0].global_percentage}%)
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Steam Achievement Sets Bar (Base Game / DLC / Updates / Archived) */}
+        {!isAllGamesMode && achievementSets.length > 1 && selectedGame && (
+          <div className="border-t border-[#2e3d52] pt-3.5 flex flex-col gap-2">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-[#389fff]" />
+                Steam Achievement Sets ({achievementSets.length})
+              </span>
+              <span className="text-slate-400 hidden sm:inline">
+                Base game &amp; DLC expansions tracked independently
+              </span>
+            </div>
+
+            <Focusable flow-children="row" className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+              <Focusable
+                focusable={true}
+                onActivate={() => setActiveSetId('all')}
+                onClick={() => setActiveSetId('all')}
+                data-testid="achievement-set-all"
+                className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+                  activeSetId === 'all'
+                    ? 'bg-[#389fff] text-[#0e141b] border-[#389fff]'
+                    : 'bg-[#0e141b] text-slate-200 border-[#2e3d52] hover:border-slate-500'
+                }`}
+              >
+                <span>All Sets</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                    activeSetId === 'all'
+                      ? 'bg-[#0e141b]/20 text-[#0e141b]'
+                      : 'bg-[#161f2c] text-slate-300'
+                  }`}
+                >
+                  {selectedGame.unlocked_count}/{selectedGame.total_achievements}
+                </span>
+              </Focusable>
+
+              {achievementSets.map((setItem) => {
+                const isSelected = activeSetId === setItem.id;
+                const isSetComplete =
+                  setItem.total_achievements > 0 &&
+                  setItem.unlocked_count >= setItem.total_achievements;
+                return (
+                  <Focusable
+                    key={setItem.id}
+                    focusable={true}
+                    onActivate={() => setActiveSetId(setItem.id)}
+                    onClick={() => setActiveSetId(setItem.id)}
+                    data-testid={`achievement-set-${setItem.id}`}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+                      isSelected
+                        ? 'bg-[#389fff] text-[#0e141b] border-[#389fff]'
+                        : isSetComplete
+                        ? 'bg-[#0e141b] text-emerald-300 border-emerald-500/40 hover:border-emerald-400'
+                        : 'bg-[#0e141b] text-slate-200 border-[#2e3d52] hover:border-slate-500'
+                    }`}
+                  >
+                    {isSetComplete && (
+                      <Trophy
+                        className={`w-3.5 h-3.5 flex-shrink-0 ${
+                          isSelected ? 'text-[#0e141b]' : 'text-[#eab308]'
+                        }`}
+                      />
+                    )}
+                    <span>{setItem.name}</span>
+                    {setItem.dlc_appid && (
+                      <span
+                        className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-extrabold ${
+                          isSelected
+                            ? 'bg-[#0e141b]/25 text-[#0e141b]'
+                            : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                        }`}
+                      >
+                        DLC
+                      </span>
+                    )}
+                    {setItem.archived && (
+                      <span
+                        className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-extrabold ${
+                          isSelected
+                            ? 'bg-[#0e141b]/25 text-[#0e141b]'
+                            : 'bg-slate-700/60 text-slate-400'
+                        }`}
+                      >
+                        Archived
+                      </span>
+                    )}
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                        isSelected
+                          ? 'bg-[#0e141b]/20 text-[#0e141b]'
+                          : isSetComplete
+                          ? 'bg-emerald-500/15 text-emerald-300'
+                          : 'bg-[#161f2c] text-slate-300'
+                      }`}
+                    >
+                      {setItem.unlocked_count}/{setItem.total_achievements} ({Math.round(setItem.completion_percentage)}%)
+                    </span>
+                  </Focusable>
+                );
+              })}
+            </Focusable>
           </div>
         )}
       </div>
@@ -351,7 +504,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
             <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-              Achievements
+              {activeSet ? `${activeSet.name} Achievements` : 'Achievements'}
             </h3>
             <span className="text-[11px] px-2 py-0.5 bg-[#161f2c] text-slate-300 border border-[#2e3d52] rounded-full font-bold">
               {filteredAchievements.length}

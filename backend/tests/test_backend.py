@@ -380,8 +380,23 @@ class TestBackendSuite(unittest.TestCase):
                     },
                 },
                 {
+                    "queryKey": ["StoreItem", "app_2778580", "default_info"],
+                    "state": {
+                        "data": {"appid": 2778580, "name": "ELDEN RING Shadow of the Erdtree"}
+                    },
+                },
+                {
+                    "queryKey": ["StoreItem", "app_2778580", "include_assets_without_overrides"],
+                    "state": {
+                        "data": {
+                            "asset_url_format": "steam/apps/2778580/${FILENAME}?t=123",
+                            "header": "dlc_header.jpg",
+                        }
+                    },
+                },
+                {
                     "queryKey": ["achievements", 1245620, "percentages"],
-                    "state": {"data": {"percentages": {"257": 23.9}}},
+                    "state": {"data": {"percentages": {"257": 23.9, "258": 14.2, "259": 50.0}}},
                 },
                 {
                     "queryKey": ["achievements", 1245620, "schema_v2"],
@@ -390,6 +405,10 @@ class TestBackendSuite(unittest.TestCase):
                             "appid": 1245620,
                             "groups": [
                                 {
+                                    "id": 0,
+                                    "name": "",
+                                    "dlcappid": 0,
+                                    "archived": False,
                                     "achievements": [
                                         {
                                             "internal_key": 257,
@@ -397,10 +416,45 @@ class TestBackendSuite(unittest.TestCase):
                                             "name": "Elden Lord",
                                             "description": 'Achieved the "Elden Lord" ending',
                                             "hidden": False,
+                                            "archived": False,
                                             "icon_achieved": "e50726be4aca4d2b1f5f14d36859fc8e6f710097.jpg",
                                         }
-                                    ]
-                                }
+                                    ],
+                                },
+                                {
+                                    "id": 1,
+                                    "name": "Shadow of the Erdtree",
+                                    "dlcappid": 2778580,
+                                    "archived": False,
+                                    "achievements": [
+                                        {
+                                            "internal_key": 258,
+                                            "api_name": "ACH_MESSMER",
+                                            "name": "Messmer the Impaler",
+                                            "description": "Defeated Messmer in the Shadow Keep",
+                                            "hidden": False,
+                                            "archived": False,
+                                            "icon_achieved": "cb0aec39fcc664c4e586750177178b6814a52e0d.jpg",
+                                        }
+                                    ],
+                                },
+                                {
+                                    "id": 2,
+                                    "name": "Legacy Colosseum",
+                                    "dlcappid": 0,
+                                    "archived": True,
+                                    "achievements": [
+                                        {
+                                            "internal_key": 259,
+                                            "api_name": "ACH_RETIRED",
+                                            "name": "Retired Arena",
+                                            "description": "Retired seasonal achievement",
+                                            "hidden": False,
+                                            "archived": True,
+                                            "icon_achieved": "cb0aec39fcc664c4e586750177178b6814a52e0d.jpg",
+                                        }
+                                    ],
+                                },
                             ],
                         }
                     },
@@ -413,19 +467,39 @@ class TestBackendSuite(unittest.TestCase):
         }
         html_doc = f'<html><head><script type="application/json" id="valve-ssr-data">{json.dumps(ssr_payload)}</script></head></html>'
         parsed = parse_steam_community_html(html_doc)
+        # Base game title & header must not be overwritten by the DLC StoreItem
         self.assertEqual(parsed["game_title"], "ELDEN RING")
         self.assertEqual(
             parsed["header_image"],
             "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg",
         )
-        self.assertEqual(len(parsed["achievements"]), 1)
+        self.assertEqual(len(parsed["achievements"]), 3)
         ach = parsed["achievements"][0]
         self.assertEqual(ach["id"], "ACH01")
         self.assertEqual(ach["global_percentage"], 23.9)
+        self.assertEqual(ach.get("set_id"), 0)
+        self.assertEqual(ach.get("set_name"), "Base Game")
         self.assertEqual(
             ach["icon"],
             "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/e50726be4aca4d2b1f5f14d36859fc8e6f710097.jpg",
         )
+
+        dlc_ach = parsed["achievements"][1]
+        self.assertEqual(dlc_ach["id"], "ACH_MESSMER")
+        self.assertEqual(dlc_ach.get("set_id"), 1)
+        self.assertEqual(dlc_ach.get("set_name"), "Shadow of the Erdtree")
+        self.assertEqual(dlc_ach.get("dlc_appid"), 2778580)
+
+        retired_ach = parsed["achievements"][2]
+        self.assertTrue(retired_ach.get("archived"))
+        self.assertEqual(retired_ach.get("rec_score"), 0.0)
+
+        sets = parsed.get("achievement_sets", [])
+        self.assertEqual(len(sets), 3)
+        self.assertEqual(sets[0]["name"], "Base Game")
+        self.assertEqual(sets[1]["name"], "Shadow of the Erdtree")
+        self.assertEqual(sets[1].get("dlc_appid"), 2778580)
+        self.assertTrue(sets[2].get("archived"))
 
 
 if __name__ == "__main__":

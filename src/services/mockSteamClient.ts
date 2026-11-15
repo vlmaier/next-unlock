@@ -8,6 +8,23 @@ const INITIAL_MOCK_GAMES: Game[] = [
     total_achievements: 6,
     unlocked_count: 2,
     completion_percentage: 33.3,
+    achievement_sets: [
+      {
+        id: 0,
+        name: 'Base Game',
+        total_achievements: 4,
+        unlocked_count: 2,
+        completion_percentage: 50.0,
+      },
+      {
+        id: 1,
+        name: 'Shadow of the Erdtree',
+        dlc_appid: 2778580,
+        total_achievements: 2,
+        unlocked_count: 0,
+        completion_percentage: 0.0,
+      },
+    ],
     achievements: [
       {
         id: 'ACH_MARGIT',
@@ -20,6 +37,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         rarity_tier: 'common',
         category: 'Story',
         hidden: false,
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_ELDEN_LORD',
@@ -32,6 +51,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         rarity_tier: 'common',
         category: 'Story',
         hidden: false,
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_LEGENDARY_ARMAMENTS',
@@ -44,6 +65,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         rarity_tier: 'rare',
         hidden: false,
         progress: { current: 8, max: 9 },
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_GODDEVOURING_SERPENT',
@@ -55,6 +78,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         global_percentage: 35.8,
         rarity_tier: 'common',
         hidden: false,
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_AGE_OF_STARS',
@@ -67,6 +92,9 @@ const INITIAL_MOCK_GAMES: Game[] = [
         rarity_tier: 'common',
         category: 'Missable',
         hidden: true,
+        set_id: 1,
+        set_name: 'Shadow of the Erdtree',
+        dlc_appid: 2778580,
       },
       {
         id: 'ACH_MALENIA',
@@ -78,6 +106,9 @@ const INITIAL_MOCK_GAMES: Game[] = [
         global_percentage: 4.1,
         rarity_tier: 'ultra_rare',
         hidden: false,
+        set_id: 1,
+        set_name: 'Shadow of the Erdtree',
+        dlc_appid: 2778580,
       },
     ],
   },
@@ -88,6 +119,23 @@ const INITIAL_MOCK_GAMES: Game[] = [
     total_achievements: 4,
     unlocked_count: 1,
     completion_percentage: 25.0,
+    achievement_sets: [
+      {
+        id: 0,
+        name: 'Base Game',
+        total_achievements: 3,
+        unlocked_count: 1,
+        completion_percentage: 33.3,
+      },
+      {
+        id: 1,
+        name: 'Phantom Liberty',
+        dlc_appid: 2138330,
+        total_achievements: 1,
+        unlocked_count: 0,
+        completion_percentage: 0.0,
+      },
+    ],
     achievements: [
       {
         id: 'ACH_THE_FOOL',
@@ -99,6 +147,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         global_percentage: 88.5,
         rarity_tier: 'common',
         hidden: false,
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_AUTOPILOT',
@@ -111,6 +161,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         rarity_tier: 'common',
         hidden: false,
         progress: { current: 2, max: 3 },
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_CITY_LIGHTS',
@@ -123,6 +175,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         rarity_tier: 'common',
         hidden: false,
         progress: { current: 9, max: 12 },
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_NIGHT_CITY_LEGEND',
@@ -134,6 +188,9 @@ const INITIAL_MOCK_GAMES: Game[] = [
         global_percentage: 3.8,
         rarity_tier: 'ultra_rare',
         hidden: false,
+        set_id: 1,
+        set_name: 'Phantom Liberty',
+        dlc_appid: 2138330,
       },
     ],
   },
@@ -144,6 +201,22 @@ const INITIAL_MOCK_GAMES: Game[] = [
     total_achievements: 4,
     unlocked_count: 2,
     completion_percentage: 50.0,
+    achievement_sets: [
+      {
+        id: 0,
+        name: 'Base Game',
+        total_achievements: 2,
+        unlocked_count: 2,
+        completion_percentage: 100.0,
+      },
+      {
+        id: 1,
+        name: 'The Olympic Update',
+        total_achievements: 2,
+        unlocked_count: 0,
+        completion_percentage: 0.0,
+      },
+    ],
     achievements: [
       {
         id: 'ACH_EREBUS',
@@ -155,6 +228,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         global_percentage: 68.8,
         rarity_tier: 'common',
         hidden: false,
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_CHRONOS_DOWN',
@@ -166,6 +241,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         global_percentage: 32.1,
         rarity_tier: 'common',
         hidden: false,
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_TARTARUS',
@@ -177,6 +254,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         global_percentage: 46.8,
         rarity_tier: 'common',
         hidden: false,
+        set_id: 1,
+        set_name: 'The Olympic Update',
       },
       {
         id: 'ACH_ALL_ASPECTS',
@@ -189,6 +268,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         rarity_tier: 'rare',
         hidden: false,
         progress: { current: 5, max: 6 },
+        set_id: 1,
+        set_name: 'The Olympic Update',
       },
     ],
   },
@@ -199,6 +280,23 @@ const INITIAL_MOCK_GAMES: Game[] = [
     total_achievements: 4,
     unlocked_count: 4,
     completion_percentage: 100.0,
+    achievement_sets: [
+      {
+        id: 0,
+        name: 'Base Game',
+        total_achievements: 3,
+        unlocked_count: 3,
+        completion_percentage: 100.0,
+      },
+      {
+        id: 1,
+        name: 'Godmaster',
+        dlc_appid: 877280,
+        total_achievements: 1,
+        unlocked_count: 1,
+        completion_percentage: 100.0,
+      },
+    ],
     achievements: [
       {
         id: 'ACH_CHARMED',
@@ -210,6 +308,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         global_percentage: 76.7,
         rarity_tier: 'common',
         hidden: false,
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_PROTECTED',
@@ -221,6 +321,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         global_percentage: 47.7,
         rarity_tier: 'common',
         hidden: false,
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_HOLLOW_KNIGHT',
@@ -232,6 +334,8 @@ const INITIAL_MOCK_GAMES: Game[] = [
         global_percentage: 26.4,
         rarity_tier: 'common',
         hidden: false,
+        set_id: 0,
+        set_name: 'Base Game',
       },
       {
         id: 'ACH_PANTHEON_5',
@@ -243,6 +347,9 @@ const INITIAL_MOCK_GAMES: Game[] = [
         global_percentage: 2.9,
         rarity_tier: 'ultra_rare',
         hidden: false,
+        set_id: 1,
+        set_name: 'Godmaster',
+        dlc_appid: 877280,
       },
     ],
   },
@@ -252,7 +359,7 @@ let mockGames: Game[] = JSON.parse(JSON.stringify(INITIAL_MOCK_GAMES));
 let pinnedIds = new Set<string>(['ACH_LEGENDARY_ARMAMENTS']);
 
 function scoreAchievement(ach: Achievement): number {
-  if (ach.unlocked) return 0.0;
+  if (ach.unlocked || ach.archived) return 0.0;
   const ratio =
     ach.progress && ach.progress.max > 1 && ach.progress.current > 0
       ? Math.min(1.0, Math.max(0.0, ach.progress.current / ach.progress.max))
@@ -300,6 +407,7 @@ export class MockSteamClientService {
       unlocked_count: 0,
       completion_percentage: 0.0,
       achievements: [],
+      achievement_sets: [],
     };
     const game: Game = JSON.parse(JSON.stringify(targetGame));
     const achievements = game.achievements;
@@ -325,8 +433,8 @@ export class MockSteamClientService {
       if (isPinned) pinned.push(ach);
 
       const ratio = ach.progress && ach.progress.max > 1 ? ach.progress.current / ach.progress.max : 0;
-      if (ratio >= 0.5) almost_there.push(ach);
-      if (ach.global_percentage >= 25.0 && (!ach.hidden || ratio > 0)) {
+      if (!ach.archived && ratio >= 0.5) almost_there.push(ach);
+      if (!ach.archived && ach.global_percentage >= 25.0 && (!ach.hidden || ratio > 0)) {
         easy_grabs.push(ach);
       }
       if (ach.hidden || ach.category === 'Missable' || ach.global_percentage <= 10.0) {
@@ -335,7 +443,8 @@ export class MockSteamClientService {
     });
 
     locked.sort((a, b) => (b.rec_score || 0) - (a.rec_score || 0));
-    const actionableLocked = locked.filter(
+    const nonArchivedLocked = locked.filter((a) => !a.archived);
+    const actionableLocked = nonArchivedLocked.filter(
       (a) => !a.hidden || (a.progress && a.progress.max > 1 && a.progress.current > 0)
     );
 
@@ -343,7 +452,7 @@ export class MockSteamClientService {
       game,
       ranked: {
         pinned,
-        up_next: (actionableLocked.length > 0 ? actionableLocked : locked).slice(0, 5),
+        up_next: (actionableLocked.length > 0 ? actionableLocked : nonArchivedLocked).slice(0, 5),
         almost_there,
         easy_grabs,
         missable,

@@ -70,6 +70,7 @@ def ensure_dev_sandbox_fixtures(sandbox_dir: str) -> None:
                 g["achievements"],
                 game_title=g["name"],
                 header_image=g["header_image"],
+                achievement_sets=g.get("achievement_sets"),
             )
 
     # Also include an installed game with 0 achievements to test the 0-achievement state

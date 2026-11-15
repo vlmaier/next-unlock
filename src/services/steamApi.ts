@@ -1,4 +1,4 @@
-import { Game, RankedAchievements, Achievement, RarityTier, ProgressInfo } from '../types/achievement';
+import { Game, RankedAchievements, Achievement, AchievementSet, RarityTier, ProgressInfo } from '../types/achievement';
 import { MockSteamClientService } from './mockSteamClient';
 
 declare const process: any;
@@ -113,7 +113,7 @@ export function getProgressRatio(ach: Partial<Achievement>): number {
  * Higher score = closer to completion and easier/more common to unlock next.
  */
 export function computeRecommendationScore(ach: Partial<Achievement>): number {
-  if (ach.unlocked) return 0.0;
+  if (ach.unlocked || ach.archived) return 0.0;
 
   const ratio = getProgressRatio(ach);
   const rawPct = typeof ach.global_percentage === 'number' ? ach.global_percentage : Number(ach.global_percentage) || 0;
@@ -124,6 +124,68 @@ export function computeRecommendationScore(ach: Partial<Achievement>): number {
 
   const score = ratio * 60.0 + globalPct * 0.8 + visibilityBonus;
   return Math.round(score * 10) / 10;
+}
+
+/**
+ * Computes per-set progress (`total_achievements`, `unlocked_count`, `completion_percentage`)
+ * for Steam's Achievement Sets (`schema_v2` `groups`).
+ */
+export function computeAchievementSets(
+  achievements: Achievement[],
+  rawSets?: Partial<AchievementSet>[]
+): AchievementSet[] {
+  const setsById = new Map<number, AchievementSet>();
+  const orderedIds: number[] = [];
+
+  if (Array.isArray(rawSets)) {
+    rawSets.forEach((rs) => {
+      const sid = typeof rs.id === 'number' ? rs.id : 0;
+      const sname = (rs.name || '').trim() || 'Base Game';
+      const entry: AchievementSet = {
+        id: sid,
+        name: sname,
+        total_achievements: 0,
+        unlocked_count: 0,
+        completion_percentage: 0,
+      };
+      if (rs.dlc_appid && rs.dlc_appid > 0) entry.dlc_appid = rs.dlc_appid;
+      if (rs.archived) entry.archived = true;
+      if (rs.header_image) entry.header_image = rs.header_image;
+      setsById.set(sid, entry);
+      orderedIds.push(sid);
+    });
+  }
+
+  achievements.forEach((ach) => {
+    const sid = typeof ach.set_id === 'number' ? ach.set_id : 0;
+    if (!setsById.has(sid)) {
+      const sname = (ach.set_name || '').trim() || 'Base Game';
+      const entry: AchievementSet = {
+        id: sid,
+        name: sname,
+        total_achievements: 0,
+        unlocked_count: 0,
+        completion_percentage: 0,
+      };
+      if (ach.dlc_appid && ach.dlc_appid > 0) entry.dlc_appid = ach.dlc_appid;
+      if (ach.archived) entry.archived = true;
+      setsById.set(sid, entry);
+      orderedIds.push(sid);
+    }
+    const sEntry = setsById.get(sid)!;
+    sEntry.total_achievements += 1;
+    if (ach.unlocked) sEntry.unlocked_count += 1;
+  });
+
+  const result: AchievementSet[] = [];
+  orderedIds.forEach((sid) => {
+    const sEntry = setsById.get(sid)!;
+    if (sEntry.total_achievements === 0) return;
+    sEntry.completion_percentage =
+      Math.round((sEntry.unlocked_count / sEntry.total_achievements) * 1000) / 10;
+    result.push(sEntry);
+  });
+  return result;
 }
 
 /**
@@ -152,11 +214,12 @@ export function rankAchievements(achievements: Achievement[], pinnedSet: Set<str
     ach.rec_score = score;
     const ratio = getProgressRatio(ach);
     const globalPct = ach.global_percentage || 0;
+    const isArchived = Boolean(ach.archived);
 
     locked.push(ach);
     if (isPinned) pinned.push(ach);
-    if (ratio >= 0.5) almost_there.push(ach);
-    if (globalPct >= 25.0 && (!ach.hidden || ratio > 0)) easy_grabs.push(ach);
+    if (!isArchived && ratio >= 0.5) almost_there.push(ach);
+    if (!isArchived && globalPct >= 25.0 && (!ach.hidden || ratio > 0)) easy_grabs.push(ach);
     if (ach.hidden || ach.category === 'Missable' || globalPct <= 10.0) {
       missable.push(ach);
     }
@@ -177,10 +240,11 @@ export function rankAchievements(achievements: Achievement[], pinnedSet: Set<str
   missable.sort(lockedSort);
   unlocked.sort((a, b) => (b.unlock_time || 0) - (a.unlock_time || 0) || (a.global_percentage || 0) - (b.global_percentage || 0));
 
-  const actionableLocked = locked.filter(
+  const nonArchivedLocked = locked.filter((a) => !a.archived);
+  const actionableLocked = nonArchivedLocked.filter(
     (a) => !a.hidden || getProgressRatio(a) > 0
   );
-  const upNextSource = actionableLocked.length > 0 ? actionableLocked : locked;
+  const upNextSource = actionableLocked.length > 0 ? actionableLocked : nonArchivedLocked;
 
   return {
     pinned,
@@ -698,6 +762,7 @@ export class SteamApiService {
         unlocked_count: unlockedCount,
         completion_percentage: pct,
         achievements: allSorted,
+        achievement_sets: computeAchievementSets(allSorted, backendDetails.game.achievement_sets),
       };
 
       const result = { game: mergedGame, ranked };
@@ -741,10 +806,12 @@ export class SteamApiService {
       const mockDetails = await MockSteamClientService.getGameDetails(appid);
       if (mockDetails && mockDetails.game) {
         const ranked = rankAchievements(mockDetails.game.achievements, this.pinnedIds);
+        const allSorted = [...ranked.locked, ...ranked.unlocked];
         const result = {
           game: {
             ...mockDetails.game,
-            achievements: [...ranked.locked, ...ranked.unlocked],
+            achievements: allSorted,
+            achievement_sets: computeAchievementSets(allSorted, mockDetails.game.achievement_sets),
           },
           ranked,
         };

@@ -128,6 +128,20 @@ describe('UI Surfaces, No-Active-Game Mode & Full-Stack Python Integration', () 
       const pinnedTab = screen.getByTestId('category-tab-pinned');
       expect(pinnedTab.textContent).toContain('2');
     });
+
+    // Verify Steam Achievement Sets bar is rendered and filters by Base Game vs DLC Set
+    const baseSetPill = screen.getByTestId('achievement-set-0');
+    const dlcSetPill = screen.getByTestId('achievement-set-1');
+    expect(baseSetPill.textContent).toContain('Base Game');
+    expect(dlcSetPill.textContent).toContain('Shadow of the Erdtree');
+
+    fireEvent.click(dlcSetPill);
+    await waitFor(() => {
+      const allTab = screen.getByTestId('category-tab-all');
+      expect(allTab.textContent).toContain('2');
+      expect(screen.queryByTestId('achievement-card-ACH_MARGIT')).toBeNull();
+      expect(screen.getByTestId('achievement-card-ACH_MALENIA')).toBeTruthy();
+    });
   });
 
   it('integrates end-to-end with the real Python backend (scripts/rpc_cli.py)', async () => {

@@ -30,8 +30,12 @@ The QAM panel is the fast, in-game or library-side companion. It must include:
    - App title & icon, **Refresh** button (with spinning state during refresh), and **Back** button (`Navigation.NavigateBack()`).
 2. **Game Selector Bar (`GameSelector.tsx`)**:
    - Horizontal focusable row (`flow-children="row"`) with **All Games Overview** pill + individual installed game pills showing game icon, title, and completion percentage (when loaded).
-3. **Hero Summary Card**:
-   - In single-game mode: Game artwork (with resilient CDN fallback + clean icon fallback), title, status badge (`Running Now` vs `Installed Library`), unlocked count (`X of Y Unlocked`), and `ProgressRing` + `Up Next` highlight.
+3. **Hero Summary Card & Steam Achievement Sets Bar**:
+   - In single-game mode: Game widescreen capsule (`460:215`), title, status badge (`Running Now` when actively running), unlocked count (`X of Y Unlocked`), and `ProgressRing` + `Up Next` highlight.
+   - **Steam Achievement Sets Support**:
+     - When a game defines multiple Achievement Sets (`achievement_sets.length > 1`, e.g., `Base Game`, `DLC` expansions, thematic categories, or `Archived` sets), both the Full Dashboard and QAM surface a **Set Selector Bar** (`All Sets` + individual sets with `unlocked/total`, completion `%`, `DLC` badge when `dlc_appid > 0`, `100%` trophy badge when a set is complete, and `Archived` badge when retired).
+     - Selecting an Achievement Set filters the displayed achievements and dynamically recomputes `RankedAchievements` and `CategoryFilter` badge counts for that set so base-game completion and DLC completion can be tracked independently.
+     - Individual `AchievementCard` and QAM items display a Set badge when a game has multiple sets (e.g., `DLC · Shadow of the Erdtree`) and an `Archived` badge when `archived === true`.
    - In `All Games Overview` mode: Aggregated achievement count across loaded games, total tracked games count, and overall `ProgressRing`.
 4. **Filter & Search Controls**:
    - `CategoryFilter` pills (`All`, `Up Next`, `Easy Grabs`, `Almost There`, `Pinned`, `Secret / Rare`, `Unlocked`) with live badge counts.
