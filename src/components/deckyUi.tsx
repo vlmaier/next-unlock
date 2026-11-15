@@ -252,9 +252,6 @@ export interface FocusableProps extends React.HTMLAttributes<HTMLDivElement> {
   focusable?: boolean;
   onActivate?: (e: any) => void;
   onCancel?: (e: any) => void;
-  onSecondaryButton?: (e: any) => void;
-  onSecondaryActionDescription?: string;
-  onButtonDown?: (e: any) => void;
   focusClassName?: string;
   focusWithinClassName?: string;
   noFocusRing?: boolean;

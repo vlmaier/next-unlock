@@ -73,20 +73,16 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
     }
   };
 
-  const handleOpenGuide = (e?: any) => {
-    e?.stopPropagation?.();
+  const handleOpenGuide = (e: React.MouseEvent) => {
+    e.stopPropagation();
     openAchievementGuide(resolvedAppId, achievement.name);
   };
-
-  const canOpenGuide = !achievement.unlocked && !isMaskedSecret;
 
   return (
     <Focusable
       focusable={true}
       onActivate={handleCardActivate}
       onClick={handleCardActivate}
-      onSecondaryActionDescription={canOpenGuide ? 'Guide' : undefined}
-      onSecondaryButton={canOpenGuide ? () => handleOpenGuide() : undefined}
       data-testid={`achievement-card-${achievement.id}`}
       className={`next-card p-3.5 flex flex-col justify-between gap-3 relative focus:outline-none ${
         achievement.is_pinned
@@ -186,16 +182,16 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
               )}
             </div>
 
-            {canOpenGuide && (
+            {!achievement.unlocked && !isMaskedSecret && (
               <button
                 type="button"
                 onClick={handleOpenGuide}
                 data-testid={`guide-btn-${achievement.id}`}
-                title={`Open top-rated Steam Community Guides for "${achievement.name}" (press X)`}
-                className="px-2 py-0.5 rounded bg-[#161f2c] hover:bg-[#263449] text-slate-300 hover:text-[#389fff] border border-[#2e3d52] hover:border-[#389fff]/50 text-[10px] font-bold flex items-center gap-1 transition-colors flex-shrink-0 cursor-pointer"
+                title={`Open top-rated Steam Community Guides for "${achievement.name}"`}
+                className="px-2 py-0.5 rounded bg-[#161f2c] hover:bg-[#263449] text-slate-300 hover:text-[#389fff] border border-[#2e3d52] hover:border-[#389fff]/50 text-[10px] font-bold flex items-center gap-1 transition-colors flex-shrink-0"
               >
                 <BookOpen className="w-3 h-3 text-[#389fff]" />
-                <span>X · Guide</span>
+                <span>Guide</span>
               </button>
             )}
           </div>

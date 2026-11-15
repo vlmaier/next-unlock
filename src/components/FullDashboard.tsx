@@ -368,35 +368,6 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
     onSelectGame(target.appid);
   };
 
-  const CATEGORY_ORDER: CategoryFilterType[] = [
-    'up_next',
-    'easy_grabs',
-    'almost_there',
-    'pinned',
-    'all',
-    'unlocked',
-  ];
-
-  const handleGamepadButtonDown = (e: any) => {
-    const btn = e?.detail?.button;
-    // Valve GamepadButton: 9 = LB, 10 = RB, 11 = LT, 12 = RT
-    if (btn === 9 || btn === 10) {
-      e?.stopPropagation?.();
-      const idx = CATEGORY_ORDER.indexOf(activeCategory);
-      const safeIdx = idx >= 0 ? idx : 0;
-      const delta = btn === 10 ? 1 : -1;
-      const nextIdx = (safeIdx + delta + CATEGORY_ORDER.length) % CATEGORY_ORDER.length;
-      setActiveCategory(CATEGORY_ORDER[nextIdx]);
-    } else if ((btn === 11 || btn === 12) && games.length > 0) {
-      e?.stopPropagation?.();
-      const gameIds: Array<number | 'all'> = ['all', ...games.map((g) => g.appid)];
-      const idx = gameIds.indexOf(selectedAppId);
-      const delta = btn === 12 ? 1 : -1;
-      const nextIdx = (idx + delta + gameIds.length) % gameIds.length;
-      onSelectGame(gameIds[nextIdx]);
-    }
-  };
-
   return (
     <div className="w-full max-w-5xl mx-auto flex-1 min-h-0 flex flex-col px-4 md:px-6 pt-2 pb-1 overflow-hidden">
       {/* Pinned SteamOS Top Header Bar */}
@@ -841,11 +812,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
           </p>
         </div>
       ) : (
-        <Focusable
-          flow-children="grid"
-          onButtonDown={handleGamepadButtonDown}
-          className="grid grid-cols-1 md:grid-cols-2 gap-3"
-        >
+        <Focusable flow-children="grid" className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filteredAchievements.map((ach) => (
             <AchievementCard
               key={`${ach.appid || selectedGame?.appid || 'g'}-${ach.id}`}
