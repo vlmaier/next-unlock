@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/vlmaier/next-unlock/compare/v2.1.0...v2.2.0) (2026-11-15)
+
+
+### Features
+
+* add DLC set artwork, 1-click secret reveal & Steam Guide lookup, and Closest to 100% Ribbon advisor ([55fcc69](https://github.com/vlmaier/next-unlock/commit/55fcc6926f89f9764fc48d001d2f24e9de8e0938))
+
 # [2.1.0](https://github.com/vlmaier/next-unlock/compare/v2.0.0...v2.1.0) (2026-11-15)
 
 
