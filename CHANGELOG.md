@@ -1,3 +1,10 @@
+## [2.3.6](https://github.com/vlmaier/next-unlock/compare/v2.3.5...v2.3.6) (2026-11-15)
+
+
+### Bug Fixes
+
+* prevent Full Dashboard GameSelector pills from shrinking vertically inside scroll container ([cbe9964](https://github.com/vlmaier/next-unlock/commit/cbe996478ea67f82fe62884df83607e683ff5a13))
+
 ## [2.3.5](https://github.com/vlmaier/next-unlock/compare/v2.3.4...v2.3.5) (2026-11-15)
 
 
