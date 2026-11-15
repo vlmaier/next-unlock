@@ -1,3 +1,10 @@
+## [2.3.5](https://github.com/vlmaier/next-unlock/compare/v2.3.4...v2.3.5) (2026-11-15)
+
+
+### Bug Fixes
+
+* pin Full Dashboard header below SteamOS top bar, remove double focus rings, and remove QAM separator line above progress bar ([6606c75](https://github.com/vlmaier/next-unlock/commit/6606c7550a5147c01e988353fae246272d0ab2dd))
+
 ## [2.3.4](https://github.com/vlmaier/next-unlock/compare/v2.3.3...v2.3.4) (2026-11-15)
 
 
