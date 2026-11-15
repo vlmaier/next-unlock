@@ -3,7 +3,22 @@ import ReactDOM from 'react-dom/client';
 import { DeckyContent, FullDashboardPage } from './components/PluginRoot';
 import { __setCallFn, clearApiCache } from './services/steamApi';
 import { MockSteamClientService } from './services/mockSteamClient';
-import { Monitor, Smartphone, Gamepad2, RotateCcw, Radio } from 'lucide-react';
+import {
+  Monitor,
+  Smartphone,
+  Gamepad2,
+  RotateCcw,
+  Radio,
+  Bell,
+  Users,
+  Settings,
+  Zap,
+  Music,
+  HelpCircle,
+  Plug,
+  ArrowLeft,
+  Wifi,
+} from 'lucide-react';
 import './index.css';
 
 if (typeof window !== 'undefined') {
@@ -228,15 +243,25 @@ const HarnessApp: React.FC = () => {
       <main key={mountKey} className="flex-1 flex items-center justify-center p-4 overflow-auto">
         <div
           data-testid="steam-deck-screen"
-          className="w-[1280px] h-[800px] max-w-full bg-[#0e141b] border border-[#2e3d52] rounded-2xl shadow-2xl overflow-hidden flex flex-col relative"
+          style={{ position: 'relative', width: '1280px', height: '800px', maxWidth: '100%' }}
+          className="bg-[#0e141b] border border-[#2e3d52] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         >
           {/* SteamOS Floating Top Status Overlay (40px, exact Deck Gaming Mode position) */}
           <div
             data-testid="steamos-native-topbar"
-            className="w-full h-[40px] px-5 flex items-center justify-end gap-3 text-xs text-slate-200 font-semibold absolute top-0 left-0 right-0 z-30 pointer-events-none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '40px',
+              zIndex: 30,
+              pointerEvents: 'none',
+            }}
+            className="px-5 flex items-center justify-end gap-3 text-xs text-slate-200 font-semibold"
           >
-            <span className="text-slate-300">Wi-Fi</span>
-            <span className="flex items-center gap-1">
+            <Wifi className="w-3.5 h-3.5 text-slate-200" />
+            <span className="flex items-center gap-1.5">
               <span>92%</span>
               <span className="inline-block w-4 h-2.5 rounded-sm bg-emerald-400 border border-emerald-200" />
             </span>
@@ -262,26 +287,42 @@ const HarnessApp: React.FC = () => {
                 {/* Exact Steam Deck QAM Panel: 340px total (48px icon rail + 292px Decky pane) */}
                 <aside
                   data-testid="steamos-qam-drawer"
-                  className="w-[340px] h-full pt-[40px] pb-[36px] flex-shrink-0 bg-[#1a222d]/95 border-l border-[#2e3d52] flex shadow-2xl"
+                  style={{
+                    width: '340px',
+                    height: '100%',
+                    paddingTop: '40px',
+                    paddingBottom: '36px',
+                    boxSizing: 'border-box',
+                  }}
+                  className="flex-shrink-0 bg-[#1a222d]/95 border-l border-[#2e3d52] flex shadow-2xl"
                 >
                   {/* Left 48px SteamOS QAM Icon Rail */}
-                  <div className="w-[48px] flex-shrink-0 bg-[#141b24] border-r border-[#2a384b] flex flex-col items-center py-3 gap-4 text-slate-400 text-xs">
-                    <span>🔔</span>
-                    <span>👥</span>
-                    <span>⚙️</span>
-                    <span>⚡</span>
-                    <span>🎵</span>
-                    <span>❓</span>
-                    <span className="w-full py-2 bg-[#2a384b] text-white text-center border-l-2 border-[#389fff]">
-                      🔌
-                    </span>
+                  <div
+                    style={{ width: '48px' }}
+                    className="flex-shrink-0 bg-[#141b24] border-r border-[#2a384b] flex flex-col items-center py-3 gap-4 text-slate-400"
+                  >
+                    <Bell className="w-4 h-4" />
+                    <Users className="w-4 h-4" />
+                    <Settings className="w-4 h-4" />
+                    <Zap className="w-4 h-4" />
+                    <Music className="w-4 h-4" />
+                    <HelpCircle className="w-4 h-4" />
+                    <div className="w-full py-2 bg-[#2a384b] text-white flex items-center justify-center border-l-2 border-[#389fff]">
+                      <Plug className="w-4 h-4" />
+                    </div>
                   </div>
 
                   {/* Right 292px Decky Plugin Pane */}
-                  <div className="w-[292px] flex-shrink-0 flex flex-col h-full overflow-hidden">
-                    <div className="h-[44px] flex-shrink-0 px-3 flex items-center gap-3 border-b border-[#2a384b]/70">
-                      <span className="px-2 py-0.5 rounded-full bg-[#3a4759] text-white text-xs font-bold">
-                        ←
+                  <div
+                    style={{ width: '292px' }}
+                    className="flex-shrink-0 flex flex-col h-full overflow-hidden"
+                  >
+                    <div
+                      style={{ height: '44px' }}
+                      className="flex-shrink-0 px-3 flex items-center gap-3 border-b border-[#2a384b]/70"
+                    >
+                      <span className="px-2 py-0.5 rounded-full bg-[#3a4759] text-white flex items-center justify-center">
+                        <ArrowLeft className="w-3.5 h-3.5" />
                       </span>
                       <span className="text-sm font-bold text-slate-100">Next Unlock</span>
                     </div>
@@ -295,7 +336,18 @@ const HarnessApp: React.FC = () => {
           </div>
 
           {/* SteamOS Floating Bottom Footer Overlay (36px) */}
-          <div className="w-full h-[36px] px-5 flex items-center justify-between text-[11px] font-semibold text-slate-300 bg-[#0b1016]/85 backdrop-blur-sm border-t border-[#2e3d52]/40 absolute bottom-0 left-0 right-0 z-30 pointer-events-none">
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '36px',
+              zIndex: 30,
+              pointerEvents: 'none',
+            }}
+            className="px-5 flex items-center justify-between text-[11px] font-semibold text-slate-300 bg-[#0b1016]/85 backdrop-blur-sm border-t border-[#2e3d52]/40"
+          >
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-full bg-slate-200 text-[#0b1016] font-extrabold text-[10px]">
                 STEAM
