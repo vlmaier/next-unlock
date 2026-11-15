@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
 import { Achievement } from '../types/achievement';
 import { AchievementIcon } from './AchievementIcon';
-import { Pin, CheckCircle2, Eye } from 'lucide-react';
+import { Pin, CheckCircle2, Eye, BookOpen } from 'lucide-react';
 import { Focusable } from './deckyUi';
+import { openAchievementGuide } from '../services/steamApi';
 
 interface AchievementCardProps {
   achievement: Achievement & { gameName?: string; appid?: number };
+  appid?: number;
+  forceRevealSpoilers?: boolean;
   onTogglePin: (id: string) => void;
 }
 
 export const AchievementCard: React.FC<AchievementCardProps> = ({
   achievement,
+  appid,
+  forceRevealSpoilers = false,
   onTogglePin,
 }) => {
   const [revealHidden, setRevealHidden] = useState(false);
@@ -51,12 +56,24 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
     ? Math.min(100, Math.max(0, (achievement.progress!.current / achievement.progress!.max) * 100))
     : 0;
 
-  const isMaskedSecret = Boolean(achievement.hidden && !achievement.unlocked && !revealHidden);
+  const isRevealedSecret = Boolean(
+    achievement.hidden && !achievement.unlocked && (revealHidden || forceRevealSpoilers)
+  );
+  const isMaskedSecret = Boolean(
+    achievement.hidden && !achievement.unlocked && !revealHidden && !forceRevealSpoilers
+  );
+
+  const resolvedAppId = achievement.appid || appid;
 
   const handleCardActivate = () => {
     if (!achievement.unlocked) {
       onTogglePin(achievement.id);
     }
+  };
+
+  const handleOpenGuide = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    openAchievementGuide(resolvedAppId, achievement.name);
   };
 
   return (
@@ -116,31 +133,46 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
             )}
           </div>
 
-          {/* Badges Row */}
-          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-            <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${rarity.badgeClass}`}>
-              {rarity.label}
-            </span>
-            {achievement.set_name && (achievement.dlc_appid || achievement.set_name !== 'Base Game') && (
-              <span
-                className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${
-                  achievement.dlc_appid
-                    ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
-                    : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
-                }`}
+          {/* Badges & Quick Guide Row */}
+          <div className="flex items-center justify-between gap-2 mt-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${rarity.badgeClass}`}>
+                {rarity.label}
+              </span>
+              {achievement.set_name && (achievement.dlc_appid || achievement.set_name !== 'Base Game') && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${
+                    achievement.dlc_appid
+                      ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                      : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
+                  }`}
+                >
+                  {achievement.dlc_appid ? `DLC · ${achievement.set_name}` : achievement.set_name}
+                </span>
+              )}
+              {achievement.archived && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400 border border-slate-600/50 font-semibold">
+                  Archived
+                </span>
+              )}
+              {achievement.hidden && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium">
+                  {isRevealedSecret ? 'Secret • Revealed' : 'Secret'}
+                </span>
+              )}
+            </div>
+
+            {!achievement.unlocked && !isMaskedSecret && (
+              <button
+                type="button"
+                onClick={handleOpenGuide}
+                data-testid={`guide-btn-${achievement.id}`}
+                title={`Open top-rated Steam Community Guides for "${achievement.name}"`}
+                className="px-2 py-0.5 rounded bg-[#161f2c] hover:bg-[#263449] text-slate-300 hover:text-[#389fff] border border-[#2e3d52] hover:border-[#389fff]/50 text-[10px] font-bold flex items-center gap-1 transition-colors flex-shrink-0"
               >
-                {achievement.dlc_appid ? `DLC · ${achievement.set_name}` : achievement.set_name}
-              </span>
-            )}
-            {achievement.archived && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400 border border-slate-600/50 font-semibold">
-                Archived
-              </span>
-            )}
-            {achievement.hidden && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium">
-                Secret
-              </span>
+                <BookOpen className="w-3 h-3 text-[#389fff]" />
+                <span>Guide</span>
+              </button>
             )}
           </div>
         </div>
@@ -151,7 +183,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
         {isMaskedSecret ? (
           <div className="flex items-center justify-between w-full gap-2">
             <span className="text-slate-400 italic text-[11px]">
-              Hidden objective — reveal to view details.
+              Hidden objective — reveal to view details &amp; guide.
             </span>
             {achievement.description && (
               <button
@@ -160,6 +192,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
                   e.stopPropagation();
                   setRevealHidden(true);
                 }}
+                data-testid={`reveal-btn-${achievement.id}`}
                 className="px-2 py-0.5 rounded bg-[#161f2c] hover:bg-[#263449] text-[#389fff] border border-[#2e3d52] text-[10px] font-bold flex items-center gap-1 flex-shrink-0"
               >
                 <Eye className="w-3 h-3" /> Reveal

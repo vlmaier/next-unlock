@@ -33,14 +33,18 @@ The QAM panel is the fast, in-game or library-side companion. It must include:
 3. **Hero Summary Card & Steam Achievement Sets Bar**:
    - In single-game mode: Game widescreen capsule (`460:215`), title, status badge (`Running Now` when actively running), unlocked count (`X of Y Unlocked`), and `ProgressRing` + `Up Next` highlight.
    - **Steam Achievement Sets Support**:
-     - When a game defines multiple Achievement Sets (`achievement_sets.length > 1`, e.g., `Base Game`, `DLC` expansions, thematic categories, or `Archived` sets), both the Full Dashboard and QAM surface a **Set Selector Bar** (`All Sets` + individual sets with `unlocked/total`, completion `%`, `DLC` badge when `dlc_appid > 0`, `100%` trophy badge when a set is complete, and `Archived` badge when retired).
-     - Selecting an Achievement Set filters the displayed achievements and dynamically recomputes `RankedAchievements` and `CategoryFilter` badge counts for that set so base-game completion and DLC completion can be tracked independently.
+     - When a game defines multiple Achievement Sets (`achievement_sets.length > 1`, e.g., `Base Game`, `DLC` expansions, thematic categories, or `Archived` sets), both the Full Dashboard and QAM surface a **Set Selector Bar** (`All Sets` + individual sets with widescreen set/DLC artwork thumbnail, `unlocked/total`, completion `%`, `DLC` badge when `dlc_appid > 0`, `100%` trophy badge when a set is complete, and `Archived` badge when retired).
+     - Selecting a DLC Achievement Set updates the Hero Summary Card's widescreen capsule to display that DLC's `header_image`, filters the displayed achievements, and dynamically recomputes `RankedAchievements` and `CategoryFilter` badge counts for that set.
      - Individual `AchievementCard` and QAM items display a Set badge when a game has multiple sets (e.g., `DLC · Shadow of the Erdtree`) and an `Archived` badge when `archived === true`.
-   - In `All Games Overview` mode: Aggregated achievement count across loaded games, total tracked games count, and overall `ProgressRing`.
-4. **Filter & Search Controls**:
+   - **In `All Games Overview` mode & "Closest to 100% Ribbon" Advisor**:
+     - Displays aggregated achievement count across loaded games, total tracked games count, and overall `ProgressRing`.
+     - Surfaces a compact **"Closest to 100% Ribbon"** advisor strip highlighting the top installed games or Achievement Sets that are closest to 100% completion (`0 < unlocked < total`, sorted by fewest remaining achievements then highest completion `%`). Clicking any advisor card jumps directly to that game and set.
+4. **Filter, Spoiler Reveal & Search Controls**:
    - `CategoryFilter` pills (`All`, `Up Next`, `Easy Grabs`, `Almost There`, `Pinned`, `Secret / Rare`, `Unlocked`) with live badge counts.
-   - `SearchBar` filtering by achievement name or description.
-5. **Achievement Grid (`AchievementCard.tsx`)**:
+   - Global **Reveal Spoilers** toggle pill when hidden achievements exist in the current view, plus per-card `Reveal` button.
+   - `SearchBar` filtering by achievement name, description, game name, or set name.
+5. **Achievement Grid (`AchievementCard.tsx`) & 1-Click Steam Guide Lookup**:
    - Clean 2-column responsive layout (`grid-cols-1 md:grid-cols-2`).
    - Each card is a `Focusable` element (`onActivate` and `onClick` toggle pin).
-   - Displays: `AchievementIcon` (with lock/check badge), title (or `Hidden Achievement` with option to reveal or clear indicator), rarity badge (`Ultra Rare ≤5%`, `Rare ≤15%`, `Common >15%`), full 2-line description, progress bar (`current / max` when applicable), unlock status/timestamp, and clear `Pin / Pinned` badge button.
+   - Displays: `AchievementIcon` (with lock/check badge), title (or `Secret Achievement` with 1-click reveal), rarity badge (`Ultra Rare ≤5%`, `Rare ≤15%`, `Easy Grab ≥25%`, `Common`), Achievement Set badge (`DLC · <Set>`), full 2-line description, progress bar (`current / max` when applicable), and `Pin / Pinned` badge button.
+   - Locked achievements include a subtle, non-intrusive **Guide** button (`openAchievementGuide(appid, achievementName)`) that opens the top-rated Steam Community Guides search for that exact achievement in the SteamOS browser (`Navigation.NavigateToExternalWeb`).

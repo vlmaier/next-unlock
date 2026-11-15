@@ -141,6 +141,30 @@ describe('UI Surfaces, No-Active-Game Mode & Full-Stack Python Integration', () 
       expect(allTab.textContent).toContain('2');
       expect(screen.queryByTestId('achievement-card-ACH_MARGIT')).toBeNull();
       expect(screen.getByTestId('achievement-card-ACH_MALENIA')).toBeTruthy();
+      expect(screen.getByTestId('guide-btn-ACH_MALENIA')).toBeTruthy();
+    });
+
+    // Verify 1-click Reveal Secrets toggle reveals hidden achievement title & Guide button
+    const revealAllBtn = screen.getByTestId('toggle-reveal-secrets-btn');
+    fireEvent.click(revealAllBtn);
+    await waitFor(() => {
+      expect(screen.getByText('Age of the Stars')).toBeTruthy();
+      expect(screen.getByTestId('guide-btn-ACH_AGE_OF_STARS')).toBeTruthy();
+    });
+
+    // Switch to All Games Overview and verify "Closest to 100% Ribbon" Advisor
+    fireEvent.click(screen.getByTestId('game-pill-all'));
+    await waitFor(() => {
+      expect(screen.getByText('Closest to 100% Ribbon')).toBeTruthy();
+      expect(screen.getByTestId('ribbon-advisor-1245620-set-0')).toBeTruthy();
+    });
+
+    // Clicking the Ribbon Advisor card jumps directly to Elden Ring's Base Game set (4 achievements)
+    fireEvent.click(screen.getByTestId('ribbon-advisor-1245620-set-0'));
+    await waitFor(() => {
+      const allTab = screen.getByTestId('category-tab-all');
+      expect(allTab.textContent).toContain('4');
+      expect(screen.getByText('Base Game Achievements')).toBeTruthy();
     });
   });
 

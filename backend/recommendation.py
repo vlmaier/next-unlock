@@ -147,6 +147,10 @@ def compute_achievement_sets(
             raw_hdr = rs.get("header_image")
             if isinstance(raw_hdr, str) and raw_hdr:
                 entry["header_image"] = raw_hdr
+            elif isinstance(raw_dlc, int) and raw_dlc > 0:
+                entry["header_image"] = (
+                    f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{raw_dlc}/header.jpg"
+                )
             sets_by_id[sid] = entry
             ordered_ids.append(sid)
 
@@ -165,6 +169,9 @@ def compute_achievement_sets(
             raw_dlc = ach.get("dlc_appid")
             if isinstance(raw_dlc, int) and raw_dlc > 0:
                 entry["dlc_appid"] = raw_dlc
+                entry["header_image"] = (
+                    f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{raw_dlc}/header.jpg"
+                )
             if bool(ach.get("archived", False)):
                 entry["archived"] = True
             sets_by_id[sid] = entry

@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Game, RankedAchievements, CategoryFilterType, Achievement } from '../types/achievement';
 import { ProgressRing } from './ProgressRing';
 import { CategoryFilter } from './CategoryFilter';
 import { AchievementCard } from './AchievementCard';
 import { SearchBar } from './SearchBar';
 import { GameSelector } from './GameSelector';
-import { Trophy, Award, CheckCircle2, ListFilter, Sparkles, Layers, Gamepad2, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Trophy, Award, CheckCircle2, ListFilter, Sparkles, Layers, Gamepad2, RefreshCw, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { Focusable } from './deckyUi';
 import { rankAchievements, computeAchievementSets } from '../services/steamApi';
 
@@ -22,6 +22,19 @@ interface FullDashboardProps {
   onBack?: () => void;
 }
 
+interface RibbonTarget {
+  key: string;
+  appid: number;
+  gameName: string;
+  setId: number | 'all';
+  setName?: string;
+  headerImage: string;
+  unlockedCount: number;
+  totalCount: number;
+  remaining: number;
+  completionPct: number;
+}
+
 export const FullDashboard: React.FC<FullDashboardProps> = ({
   games,
   selectedAppId,
@@ -36,13 +49,24 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
 }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryFilterType>('all');
   const [activeSetId, setActiveSetId] = useState<number | 'all'>('all');
+  const [revealAllSecrets, setRevealAllSecrets] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [imgIdx, setImgIdx] = useState(0);
+  const pendingSetIdRef = useRef<number | 'all' | null>(null);
 
   useEffect(() => {
     setImgIdx(0);
-    setActiveSetId('all');
+    if (pendingSetIdRef.current !== null) {
+      setActiveSetId(pendingSetIdRef.current);
+      pendingSetIdRef.current = null;
+    } else {
+      setActiveSetId('all');
+    }
   }, [selectedGame?.appid, selectedAppId]);
+
+  useEffect(() => {
+    setImgIdx(0);
+  }, [activeSetId]);
 
   const isAllGamesMode = selectedAppId === 'all';
 
@@ -60,12 +84,13 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
     return achievementSets.find((s) => s.id === activeSetId) || null;
   }, [achievementSets, activeSetId]);
 
-  // Aggregate stats and canonical ranking across all games when in 'all' mode
+  // Aggregate stats, canonical ranking, and "Closest to 100% Ribbon" advisor across all games
   const allGamesStats = useMemo(() => {
     let totalAch = 0;
     let unlockedAch = 0;
     const allAchievementsList: (Achievement & { gameName?: string; appid?: number })[] = [];
     const pinnedSet = new Set<string>();
+    const ribbonCandidates: RibbonTarget[] = [];
 
     games.forEach((g) => {
       const gameAchs = g.achievements || [];
@@ -80,7 +105,44 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
         if (a.is_pinned) pinnedSet.add(a.id);
         allAchievementsList.push({ ...a, gameName: g.name, appid: g.appid });
       });
+
+      const sets = computeAchievementSets(gameAchs, g.achievement_sets);
+      if (sets.length > 1) {
+        sets.forEach((s) => {
+          if (s.archived || s.total_achievements === 0) return;
+          if (s.unlocked_count > 0 && s.unlocked_count < s.total_achievements) {
+            ribbonCandidates.push({
+              key: `${g.appid}-set-${s.id}`,
+              appid: g.appid,
+              gameName: g.name,
+              setId: s.id,
+              setName: s.name,
+              headerImage: s.header_image || g.header_image,
+              unlockedCount: s.unlocked_count,
+              totalCount: s.total_achievements,
+              remaining: s.total_achievements - s.unlocked_count,
+              completionPct: s.completion_percentage,
+            });
+          }
+        });
+      } else if (gTotal > 0 && gUnlocked > 0 && gUnlocked < gTotal) {
+        ribbonCandidates.push({
+          key: `${g.appid}-all`,
+          appid: g.appid,
+          gameName: g.name,
+          setId: 'all',
+          headerImage: g.header_image,
+          unlockedCount: gUnlocked,
+          totalCount: gTotal,
+          remaining: gTotal - gUnlocked,
+          completionPct: Math.round((gUnlocked / gTotal) * 1000) / 10,
+        });
+      }
     });
+
+    ribbonCandidates.sort(
+      (a, b) => a.remaining - b.remaining || b.completionPct - a.completionPct
+    );
 
     if (allAchievementsList.length === 0 && selectedGame && (selectedGame.achievements?.length || 0) > 0) {
       totalAch = selectedGame.total_achievements;
@@ -124,6 +186,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
       completion,
       achievements: [...allRanked.locked, ...allRanked.unlocked],
       ranked: allRanked,
+      closestRibbons: ribbonCandidates.slice(0, 3),
     };
   }, [games, selectedGame]);
 
@@ -139,6 +202,11 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
     });
     return rankAchievements(setAchs, pinnedSet);
   }, [isAllGamesMode, allGamesStats.ranked, selectedGame, activeSetId, ranked]);
+
+  const hasLockedSecrets = useMemo(() => {
+    if (!activeRanked) return false;
+    return activeRanked.locked.some((a) => Boolean(a.hidden));
+  }, [activeRanked]);
 
   // Compute category counts using the single canonical ranking structure
   const counts = useMemo(() => {
@@ -201,13 +269,24 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
 
   const imageCandidates = useMemo(() => {
     if (!selectedGame) return [];
-    return [
+    const candidates: (string | undefined)[] = [];
+    if (activeSet?.header_image) {
+      candidates.push(activeSet.header_image);
+    }
+    if (activeSet?.dlc_appid) {
+      candidates.push(
+        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${activeSet.dlc_appid}/header.jpg`,
+        `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${activeSet.dlc_appid}/header.jpg`
+      );
+    }
+    candidates.push(
       selectedGame.header_image,
       `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${selectedGame.appid}/header.jpg`,
       `https://steamcdn-a.akamaihd.net/steam/apps/${selectedGame.appid}/header.jpg`,
-      `https://cdn.cloudflare.steamstatic.com/steam/apps/${selectedGame.appid}/header.jpg`,
-    ].filter(Boolean) as string[];
-  }, [selectedGame]);
+      `https://cdn.cloudflare.steamstatic.com/steam/apps/${selectedGame.appid}/header.jpg`
+    );
+    return candidates.filter(Boolean) as string[];
+  }, [selectedGame, activeSet]);
 
   const currentImg = imgIdx < imageCandidates.length ? imageCandidates[imgIdx] : null;
 
@@ -226,6 +305,11 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
     : activeSet
     ? activeSet.completion_percentage
     : selectedGame?.completion_percentage || 0;
+
+  const handleSelectRibbonTarget = (target: RibbonTarget) => {
+    pendingSetIdRef.current = target.setId;
+    onSelectGame(target.appid);
+  };
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-5 p-4 md:p-6">
@@ -393,6 +477,58 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
           )}
         </div>
 
+        {/* Closest to 100% Ribbon Advisor (in All Games Overview mode) */}
+        {isAllGamesMode && allGamesStats.closestRibbons.length > 0 && (
+          <div className="border-t border-[#2e3d52] pt-3.5 flex flex-col gap-2">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Trophy className="w-3.5 h-3.5 text-[#eab308]" />
+                Closest to 100% Ribbon
+              </span>
+              <span className="text-slate-400 hidden sm:inline">
+                Fastest path to your next completion badge
+              </span>
+            </div>
+
+            <Focusable flow-children="row" className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {allGamesStats.closestRibbons.map((item) => (
+                <Focusable
+                  key={item.key}
+                  focusable={true}
+                  onActivate={() => handleSelectRibbonTarget(item)}
+                  onClick={() => handleSelectRibbonTarget(item)}
+                  data-testid={`ribbon-advisor-${item.key}`}
+                  className="px-3 py-2 rounded-lg bg-[#0e141b] hover:bg-[#1e293b] border border-[#2e3d52] hover:border-[#389fff]/60 flex items-center justify-between gap-2.5 transition-all cursor-pointer focus:ring-2 focus:ring-[#389fff] focus:outline-none"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {item.headerImage && (
+                      <img
+                        src={item.headerImage}
+                        alt={item.gameName}
+                        style={{ width: 38, height: 18 }}
+                        className="rounded object-cover flex-shrink-0 border border-black/30"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-slate-100 truncate">
+                        {item.gameName}
+                      </div>
+                      {item.setName && (
+                        <div className="text-[10px] font-semibold text-slate-400 truncate">
+                          {item.setName}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold whitespace-nowrap flex-shrink-0">
+                    {item.remaining} left • {Math.round(item.completionPct)}%
+                  </span>
+                </Focusable>
+              ))}
+            </Focusable>
+          </div>
+        )}
+
         {/* Steam Achievement Sets Bar (Base Game / DLC / Updates / Archived) */}
         {!isAllGamesMode && achievementSets.length > 1 && selectedGame && (
           <div className="border-t border-[#2e3d52] pt-3.5 flex flex-col gap-2">
@@ -412,7 +548,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
                 onActivate={() => setActiveSetId('all')}
                 onClick={() => setActiveSetId('all')}
                 data-testid="achievement-set-all"
-                className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
                   activeSetId === 'all'
                     ? 'bg-[#389fff] text-[#0e141b] border-[#389fff]'
                     : 'bg-[#0e141b] text-slate-200 border-[#2e3d52] hover:border-slate-500'
@@ -435,6 +571,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
                 const isSetComplete =
                   setItem.total_achievements > 0 &&
                   setItem.unlocked_count >= setItem.total_achievements;
+                const setThumbUrl = setItem.header_image || selectedGame.header_image;
                 return (
                   <Focusable
                     key={setItem.id}
@@ -442,7 +579,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
                     onActivate={() => setActiveSetId(setItem.id)}
                     onClick={() => setActiveSetId(setItem.id)}
                     data-testid={`achievement-set-${setItem.id}`}
-                    className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
                       isSelected
                         ? 'bg-[#389fff] text-[#0e141b] border-[#389fff]'
                         : isSetComplete
@@ -450,6 +587,14 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
                         : 'bg-[#0e141b] text-slate-200 border-[#2e3d52] hover:border-slate-500'
                     }`}
                   >
+                    {setThumbUrl && (
+                      <img
+                        src={setThumbUrl}
+                        alt={setItem.name}
+                        style={{ width: 38, height: 18 }}
+                        className="rounded object-cover flex-shrink-0 border border-black/30"
+                      />
+                    )}
                     {isSetComplete && (
                       <Trophy
                         className={`w-3.5 h-3.5 flex-shrink-0 ${
@@ -499,7 +644,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
         )}
       </div>
 
-      {/* Category Filter & Search Row */}
+      {/* Category Filter, Spoiler Reveal & Search Row */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
@@ -514,7 +659,34 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
             </span>
           </div>
 
-          <SearchBar value={searchQuery} onChange={setSearchQuery} />
+          <div className="flex items-center gap-2">
+            {hasLockedSecrets && (
+              <Focusable
+                focusable={true}
+                onActivate={() => setRevealAllSecrets((prev) => !prev)}
+                onClick={() => setRevealAllSecrets((prev) => !prev)}
+                data-testid="toggle-reveal-secrets-btn"
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+                  revealAllSecrets
+                    ? 'bg-[#389fff]/15 text-[#389fff] border-[#389fff]/40'
+                    : 'bg-[#161f2c] text-slate-300 border-[#2e3d52] hover:border-slate-500'
+                }`}
+              >
+                {revealAllSecrets ? (
+                  <>
+                    <EyeOff className="w-3.5 h-3.5 text-[#389fff]" />
+                    <span>Hide Secrets</span>
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Reveal Secrets</span>
+                  </>
+                )}
+              </Focusable>
+            )}
+            <SearchBar value={searchQuery} onChange={setSearchQuery} />
+          </div>
         </div>
 
         <CategoryFilter
@@ -545,6 +717,8 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
             <AchievementCard
               key={`${ach.appid || selectedGame?.appid || 'g'}-${ach.id}`}
               achievement={ach}
+              appid={ach.appid || selectedGame?.appid}
+              forceRevealSpoilers={revealAllSecrets}
               onTogglePin={onTogglePin}
             />
           ))}

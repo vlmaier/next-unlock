@@ -97,6 +97,34 @@ export function getGameHeaderUrl(appid: number, providedUrl?: string): string {
   return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`;
 }
 
+export function getAchievementGuideUrl(appid: number | undefined, achievementName: string): string {
+  const query = encodeURIComponent(achievementName.trim());
+  if (appid && appid > 0) {
+    return `https://steamcommunity.com/app/${appid}/guides/?searchText=${query}&browsesort=toprated&browsefilter=toprated`;
+  }
+  return `https://steamcommunity.com/workshop/browse/?searchtext=${query}&section=guides`;
+}
+
+export function openAchievementGuide(appid: number | undefined, achievementName: string): string {
+  const url = getAchievementGuideUrl(appid, achievementName);
+  if (typeof window !== 'undefined') {
+    const w = window as any;
+    const nav = w.DFL?.Navigation || w.DeckyPluginLoader?.Navigation;
+    if (typeof nav?.NavigateToExternalWeb === 'function') {
+      nav.NavigateToExternalWeb(url);
+      return url;
+    }
+    if (typeof w.SteamClient?.System?.OpenInSystemBrowser === 'function') {
+      w.SteamClient.System.OpenInSystemBrowser(url);
+      return url;
+    }
+    if (typeof window.open === 'function') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  }
+  return url;
+}
+
 /**
  * Canonical progress ratio calculation (Spec 03).
  */
@@ -150,7 +178,11 @@ export function computeAchievementSets(
       };
       if (rs.dlc_appid && rs.dlc_appid > 0) entry.dlc_appid = rs.dlc_appid;
       if (rs.archived) entry.archived = true;
-      if (rs.header_image) entry.header_image = rs.header_image;
+      if (rs.header_image) {
+        entry.header_image = rs.header_image;
+      } else if (rs.dlc_appid && rs.dlc_appid > 0) {
+        entry.header_image = `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${rs.dlc_appid}/header.jpg`;
+      }
       setsById.set(sid, entry);
       orderedIds.push(sid);
     });
@@ -167,7 +199,10 @@ export function computeAchievementSets(
         unlocked_count: 0,
         completion_percentage: 0,
       };
-      if (ach.dlc_appid && ach.dlc_appid > 0) entry.dlc_appid = ach.dlc_appid;
+      if (ach.dlc_appid && ach.dlc_appid > 0) {
+        entry.dlc_appid = ach.dlc_appid;
+        entry.header_image = `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${ach.dlc_appid}/header.jpg`;
+      }
       if (ach.archived) entry.archived = true;
       setsById.set(sid, entry);
       orderedIds.push(sid);
