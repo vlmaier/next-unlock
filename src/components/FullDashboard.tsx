@@ -427,8 +427,8 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
         </Focusable>
       </div>
 
-      {/* Scrollable Content Area (stays cleanly below SteamOS top bar & pinned header) */}
-      <div className="flex-1 min-h-0 overflow-y-auto pt-4 pb-4 flex flex-col gap-5 pr-1">
+      {/* Scrollable Content Area (block + space-y-5 so children never flex-shrink vertically) */}
+      <div className="flex-1 min-h-0 overflow-y-auto pt-4 pb-6 space-y-5 pr-1">
         {/* Game Selector Pills Bar */}
       {games.length > 0 && (
         <GameSelector games={games} selectedAppId={selectedAppId} onSelectGame={onSelectGame} />
