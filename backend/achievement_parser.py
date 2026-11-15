@@ -190,12 +190,21 @@ def get_library_folders(force_refresh: bool = False) -> list[str]:
                     logger.debug(f"Failed reading {vdf_path}: {e}")
 
     if not os.environ.get("NEXT_UNLOCK_STEAM_ROOT"):
+        # Use bounded shallow globs instead of recursive `**` walks so SD cards / mounts
+        # with 200+ games and large compatdata trees never stall `get_games`.
         for mount_glob in (
-            "/run/media/**/steamapps",
-            "/media/**/steamapps",
-            "/mnt/**/steamapps",
+            "/run/media/*/steamapps",
+            "/run/media/*/*/steamapps",
+            "/run/media/*/SteamLibrary/steamapps",
+            "/run/media/*/*/SteamLibrary/steamapps",
+            "/media/*/steamapps",
+            "/media/*/*/steamapps",
+            "/media/*/SteamLibrary/steamapps",
+            "/mnt/*/steamapps",
+            "/mnt/*/*/steamapps",
+            "/mnt/*/SteamLibrary/steamapps",
         ):
-            for sd_steamapps in glob.glob(mount_glob, recursive=True):
+            for sd_steamapps in glob.glob(mount_glob):
                 add_folder(sd_steamapps)
 
     _cached_library_folders.val = folders
