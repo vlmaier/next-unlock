@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/vlmaier/next-unlock/compare/v2.5.4...v2.6.0) (2026-11-15)
+
+
+### Features
+
+* add dashboard sort and paging, bump cache schema v3, fix sub-0.1% rarity and English fallback ([28ef6b0](https://github.com/vlmaier/next-unlock/commit/28ef6b074575a7e2f316404b5de371eeac56279d))
+
 ## [2.5.4](https://github.com/vlmaier/next-unlock/compare/v2.5.3...v2.5.4) (2026-11-15)
 
 
