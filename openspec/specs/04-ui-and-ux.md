@@ -39,12 +39,15 @@ The QAM panel is the fast, in-game or library-side companion. It must include:
    - **In `All Games Overview` mode & "Closest to 100% Ribbon" Advisor**:
      - Displays aggregated achievement count across loaded games, total tracked games count, and overall `ProgressRing`.
      - Surfaces a compact **"Closest to 100% Ribbon"** advisor strip highlighting the top installed games or Achievement Sets that are closest to 100% completion (`0 < unlocked < total`, sorted by fewest remaining achievements then highest completion `%`). Clicking any advisor card jumps directly to that game and set.
-4. **Filter, Spoiler Reveal & Search Controls**:
+4. **Filter, Missable Radar, Spoiler Reveal & Search Controls**:
    - `CategoryFilter` pills (`All`, `Up Next`, `Easy Grabs`, `Almost There`, `Pinned`, `Secret / Rare`, `Unlocked`) with live badge counts.
-   - Global **Reveal Spoilers** toggle pill when hidden achievements exist in the current view, plus per-card `Reveal` button.
+   - **Missable Achievements ("No-Paranoia Radar")**:
+     - When locked missable achievements exist in the current view (`is_missable === true` or `category === 'Missable'`), both the Hero Summary Card (`missable-radar-btn`) and the filter bar (`toggle-missable-only-btn`) surface a clickable amber `⚠️ N Missable` pill that filters the achievement grid strictly to locked missable achievements.
+     - In QAM (`QuickAccessMenu.tsx`), when locked missables exist for the active game/set, a compact Missable Radar row warns the user how many missable achievements remain.
+   - Global **Reveal Secrets** toggle pill when hidden achievements exist in the current view, plus per-card `Reveal` button.
    - `SearchBar` filtering by achievement name, description, game name, or set name.
 5. **Achievement Grid (`AchievementCard.tsx`) & 1-Click Steam Guide Lookup**:
    - Clean 2-column responsive layout (`grid-cols-1 md:grid-cols-2`).
    - Each card is a `Focusable` element (`onActivate` and `onClick` toggle pin).
-   - Displays: `AchievementIcon` (with lock/check badge), title (or `Secret Achievement` with 1-click reveal), rarity badge (`Ultra Rare ≤5%`, `Rare ≤15%`, `Easy Grab ≥25%`, `Common`), Achievement Set badge (`DLC · <Set>`), full 2-line description, progress bar (`current / max` when applicable), and `Pin / Pinned` badge button.
+   - Displays: `AchievementIcon` (with lock/check badge), title (or `Secret Achievement` with 1-click reveal), rarity badge (`Ultra Rare ≤5%`, `Rare ≤15%`, `Easy Grab ≥25%`, `Common`), Achievement Set badge (`DLC · <Set>`), **amber `⚠️ Missable` badge** (when `is_missable` or `category === 'Missable'`), **red `Unobtainable` badge** (when `is_unobtainable === true`), full 2-line description, **1-line Point-of-No-Return cutoff warning** (`missable_reason`, when visible), progress bar (`current / max` when applicable), and `Pin / Pinned` badge button.
    - Locked achievements include a subtle, non-intrusive **Guide** button (`openAchievementGuide(appid, achievementName)`) that opens the top-rated Steam Community Guides search for that exact achievement in the SteamOS browser (`Navigation.NavigateToExternalWeb`).

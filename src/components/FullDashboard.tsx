@@ -5,7 +5,7 @@ import { CategoryFilter } from './CategoryFilter';
 import { AchievementCard } from './AchievementCard';
 import { SearchBar } from './SearchBar';
 import { GameSelector } from './GameSelector';
-import { Trophy, Award, CheckCircle2, ListFilter, Sparkles, Layers, Gamepad2, RefreshCw, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Trophy, Award, CheckCircle2, ListFilter, Sparkles, Layers, Gamepad2, RefreshCw, ArrowLeft, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { Focusable } from './deckyUi';
 import { rankAchievements, computeAchievementSets } from '../services/steamApi';
 
@@ -50,12 +50,14 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
   const [activeCategory, setActiveCategory] = useState<CategoryFilterType>('all');
   const [activeSetId, setActiveSetId] = useState<number | 'all'>('all');
   const [revealAllSecrets, setRevealAllSecrets] = useState(false);
+  const [onlyMissable, setOnlyMissable] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [imgIdx, setImgIdx] = useState(0);
   const pendingSetIdRef = useRef<number | 'all' | null>(null);
 
   useEffect(() => {
     setImgIdx(0);
+    setOnlyMissable(false);
     if (pendingSetIdRef.current !== null) {
       setActiveSetId(pendingSetIdRef.current);
       pendingSetIdRef.current = null;
@@ -208,6 +210,11 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
     return activeRanked.locked.some((a) => Boolean(a.hidden));
   }, [activeRanked]);
 
+  const lockedMissablesCount = useMemo(() => {
+    if (!activeRanked) return 0;
+    return activeRanked.locked.filter((a) => Boolean(a.is_missable || a.category === 'Missable')).length;
+  }, [activeRanked]);
+
   // Compute category counts using the single canonical ranking structure
   const counts = useMemo(() => {
     if (!activeRanked) {
@@ -255,6 +262,10 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
       }
     }
 
+    if (onlyMissable) {
+      list = list.filter((a) => !a.unlocked && Boolean(a.is_missable || a.category === 'Missable'));
+    }
+
     if (!searchQuery.trim()) return list;
 
     const q = searchQuery.toLowerCase();
@@ -265,7 +276,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
         (a.gameName && a.gameName.toLowerCase().includes(q)) ||
         (a.set_name && a.set_name.toLowerCase().includes(q))
     );
-  }, [activeRanked, activeCategory, searchQuery]);
+  }, [activeRanked, activeCategory, onlyMissable, searchQuery]);
 
   const imageCandidates = useMemo(() => {
     if (!selectedGame) return [];
@@ -439,6 +450,26 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
                   <span className="flex items-center gap-1.5 text-[#10b981]">
                     <CheckCircle2 className="w-4 h-4 text-[#10b981]" /> {Math.round(ringPct)}% Completed
                   </span>
+                  {lockedMissablesCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveCategory('all');
+                        setOnlyMissable((prev) => !prev);
+                      }}
+                      data-testid="missable-radar-btn"
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] font-bold transition-colors ${
+                        onlyMissable
+                          ? 'bg-amber-500 text-[#0e141b] border-amber-400'
+                          : 'bg-amber-500/15 text-amber-300 border-amber-500/35 hover:border-amber-400'
+                      }`}
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>
+                        {lockedMissablesCount} Missable Left
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -660,6 +691,22 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {lockedMissablesCount > 0 && (
+              <Focusable
+                focusable={true}
+                onActivate={() => setOnlyMissable((prev) => !prev)}
+                onClick={() => setOnlyMissable((prev) => !prev)}
+                data-testid="toggle-missable-only-btn"
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+                  onlyMissable
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                    : 'bg-[#161f2c] text-amber-300/90 border-[#2e3d52] hover:border-amber-500/40'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                <span>Missable ({lockedMissablesCount})</span>
+              </Focusable>
+            )}
             {hasLockedSecrets && (
               <Focusable
                 focusable={true}

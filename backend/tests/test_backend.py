@@ -501,6 +501,121 @@ class TestBackendSuite(unittest.TestCase):
         self.assertEqual(sets[1].get("dlc_appid"), 2778580)
         self.assertTrue(sets[2].get("archived"))
 
+    def test_missables_hybrid_resolver_and_unobtainable_ranking(self) -> None:
+        from backend.missables_resolver import (
+            enrich_achievements_with_missables,
+            parse_scavenger_db_payload,
+            parse_steam_guide_missables,
+            parse_steamhunters_obtainability,
+        )
+        from backend.models import AchievementData
+
+        # 1. Test Tier 1b Scavenger DB JSON parser
+        scav_payload: dict[str, object] = {
+            "gameName": "ELDEN RING",
+            "achievements": [
+                {
+                    "apiname": "ACH08",
+                    "display_name": "Legendary Armaments",
+                    "chapter": "Leyndell, Royal Capital",
+                    "hint": "Bolt of Gransax must be picked up before Maliketh.",
+                    "is_missable": True,
+                },
+                {
+                    "apiname": "ACH01",
+                    "display_name": "Elden Lord",
+                    "is_missable": False,
+                },
+            ],
+        }
+        scav_map = parse_scavenger_db_payload(scav_payload)
+        self.assertTrue(scav_map["ach08"]["is_missable"])
+        self.assertIn("Leyndell", scav_map["ach08"].get("missable_reason", ""))
+        self.assertNotIn("ach01", scav_map)
+
+        # 2. Test Tier 2 Steam Guide HTML Missable subsection parser
+        guide_html = """
+        <div class="subSectionTitle">Missable Achievements</div>
+        <div class="subSectionDesc">
+            Card Collector: Win all Gwent cards during A Matter of Life and Death before leaving the estate.
+            Full Crew: Recruit all allies before sailing to the Isle of Mists.
+        </div></div>
+        """
+        sample_achs: list[AchievementData] = [
+            {
+                "id": "ach_card_collector",
+                "name": "Card Collector",
+                "description": "Acquire all gwent cards.",
+                "icon": "",
+                "unlocked": False,
+                "unlock_time": None,
+                "global_percentage": 5.2,
+                "rarity_tier": "rare",
+                "hidden": False,
+            },
+            {
+                "id": "ach_lilac",
+                "name": "Lilac and Gooseberries",
+                "description": "Find Yennefer of Vengerberg.",
+                "icon": "",
+                "unlocked": False,
+                "unlock_time": None,
+                "global_percentage": 62.0,
+                "rarity_tier": "common",
+                "hidden": False,
+            },
+        ]
+        guide_map = parse_steam_guide_missables(guide_html, sample_achs)
+        self.assertIn("ach_card_collector", guide_map)
+        self.assertTrue(guide_map["ach_card_collector"]["is_missable"])
+        self.assertIn("Gwent cards", guide_map["ach_card_collector"].get("missable_reason", ""))
+        self.assertNotIn("ach_lilac", guide_map)
+
+        # 3. Test Tier 3 SteamHunters obtainability parser & 0.0 score for unobtainable achievements
+        sh_payload: list[dict[str, object]] = [
+            {"apiName": "ACH_DEAD_SERVERS", "name": "King of the Arena", "obtainability": 2},
+            {"apiName": "ACH_NORMAL", "name": "First Step", "obtainability": 0},
+        ]
+        unobt = parse_steamhunters_obtainability(sh_payload)
+        self.assertIn("ach_dead_servers", unobt)
+        self.assertNotIn("ach_normal", unobt)
+
+        # 4. Test offline bundled enrichment + ranking behavior
+        er_achs: list[AchievementData] = [
+            {
+                "id": "ACH_LEGENDARY_ARMAMENTS",
+                "name": "Legendary Armaments",
+                "description": "Acquire all 9 legendary armaments.",
+                "icon": "",
+                "unlocked": False,
+                "unlock_time": None,
+                "global_percentage": 9.2,
+                "rarity_tier": "rare",
+                "hidden": False,
+            },
+            {
+                "id": "ACH_BROKEN",
+                "name": "Broken Online Trophy",
+                "description": "Win a ranked match on shut-down servers.",
+                "icon": "",
+                "unlocked": False,
+                "unlock_time": None,
+                "global_percentage": 45.0,
+                "rarity_tier": "common",
+                "hidden": False,
+                "is_unobtainable": True,
+            },
+        ]
+        enriched = enrich_achievements_with_missables(1245620, er_achs, allow_network=False)
+        self.assertTrue(enriched[0].get("is_missable"))
+        self.assertIn("Bolt of Gransax", enriched[0].get("missable_reason", ""))
+        self.assertEqual(enriched[1].get("rec_score"), 0.0)
+
+        ranked = rank_achievements(enriched, [])
+        self.assertEqual(len(ranked["up_next"]), 1)
+        self.assertEqual(ranked["up_next"][0]["id"], "ACH_LEGENDARY_ARMAMENTS")
+        self.assertEqual(len(ranked["easy_grabs"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -68,6 +68,9 @@ const INITIAL_MOCK_GAMES: Game[] = [
         progress: { current: 8, max: 9 },
         set_id: 0,
         set_name: 'Base Game',
+        is_missable: true,
+        missable_reason:
+          'Must collect the Bolt of Gransax in Leyndell, Royal Capital before defeating Maliketh in Crumbling Farum Azula.',
       },
       {
         id: 'ACH_GODDEVOURING_SERPENT',
@@ -96,6 +99,9 @@ const INITIAL_MOCK_GAMES: Game[] = [
         set_id: 1,
         set_name: 'Shadow of the Erdtree',
         dlc_appid: 2778580,
+        is_missable: true,
+        missable_reason:
+          "Complete Ranni's questline and summon her sign after the final boss before choosing another ending.",
       },
       {
         id: 'ACH_MALENIA',
@@ -193,6 +199,9 @@ const INITIAL_MOCK_GAMES: Game[] = [
         set_id: 1,
         set_name: 'Phantom Liberty',
         dlc_appid: 2138330,
+        is_missable: true,
+        missable_reason:
+          "Complete Rogue's side quests (Blistering Love) before the Nocturne Op55N1 point of no return.",
       },
     ],
   },
@@ -362,7 +371,7 @@ let mockGames: Game[] = JSON.parse(JSON.stringify(INITIAL_MOCK_GAMES));
 let pinnedIds = new Set<string>(['ACH_LEGENDARY_ARMAMENTS']);
 
 function scoreAchievement(ach: Achievement): number {
-  if (ach.unlocked || ach.archived) return 0.0;
+  if (ach.unlocked || ach.archived || ach.is_unobtainable) return 0.0;
   const ratio =
     ach.progress && ach.progress.max > 1 && ach.progress.current > 0
       ? Math.min(1.0, Math.max(0.0, ach.progress.current / ach.progress.max))

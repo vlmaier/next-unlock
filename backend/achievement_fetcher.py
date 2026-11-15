@@ -20,6 +20,7 @@ import ssl
 import urllib.request
 from collections.abc import Iterable, Mapping
 
+from backend.missables_resolver import enrich_achievements_with_missables
 from backend.models import (
     AchievementData,
     AchievementSetData,
@@ -85,6 +86,13 @@ def _coerce_achievement_list(raw_list: Iterable[object]) -> list[AchievementData
             ach["dlc_appid"] = raw_dlc
         if bool(item.get("archived", False)):
             ach["archived"] = True
+        if bool(item.get("is_missable", False)) or item.get("category") == "Missable":
+            ach["is_missable"] = True
+        raw_reason = item.get("missable_reason")
+        if isinstance(raw_reason, str) and raw_reason:
+            ach["missable_reason"] = raw_reason
+        if bool(item.get("is_unobtainable", False)):
+            ach["is_unobtainable"] = True
         prog = item.get("progress")
         if isinstance(prog, Mapping):
             raw_c = prog.get("current", 0)
@@ -110,7 +118,11 @@ def load_cached_achievements(appid: int) -> FetchedAchievementsEnvelope | None:
         with open(path, encoding="utf-8") as f:
             data: object = json.load(f)
             if isinstance(data, Mapping) and isinstance(data.get("achievements"), list):
-                ach_list = _coerce_achievement_list(data["achievements"])
+                ach_list = enrich_achievements_with_missables(
+                    int(appid),
+                    _coerce_achievement_list(data["achievements"]),
+                    allow_network=False,
+                )
                 raw_title = data.get("game_title")
                 raw_hdr = data.get("header_image")
                 raw_sets = data.get("achievement_sets")
@@ -128,7 +140,11 @@ def load_cached_achievements(appid: int) -> FetchedAchievementsEnvelope | None:
                     "achievement_sets": computed_sets,
                 }
             if isinstance(data, list) and len(data) > 0:
-                ach_list = _coerce_achievement_list(data)
+                ach_list = enrich_achievements_with_missables(
+                    int(appid),
+                    _coerce_achievement_list(data),
+                    allow_network=False,
+                )
                 return {
                     "appid": int(appid),
                     "game_title": None,
@@ -537,6 +553,11 @@ def fetch_achievements_from_steam(
         raw_sets = parsed.get("achievement_sets")
 
         if achievements:
+            achievements = enrich_achievements_with_missables(
+                appid_int,
+                achievements,
+                allow_network=True,
+            )
             computed_sets = compute_achievement_sets(achievements, raw_sets)
             save_cached_achievements(
                 appid_int,

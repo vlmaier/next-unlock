@@ -50,9 +50,10 @@
 - **Python Backend (`main.py`, `backend/`)**:
   - Discovers installed Steam games from `.acf` manifests across internal drive and SD card libraries.
   - Detects the active running Steam `appid` via `/proc` inspection.
-  - Fetches public achievement schemas (names, descriptions, icons, global percentages) from Steam Community and caches them in `~/.config/next-unlock/cache/achievements_<appid>.json`.
+  - Fetches public achievement schemas (names, descriptions, icons, global percentages, and Steam Achievement Sets / DLC sets from `schema_v2`) from Steam Community and caches them in `~/.config/next-unlock/cache/achievements_<appid>.json`.
+  - Enriches achievements with **Missable** (`is_missable`, `missable_reason`) and **Unobtainable** (`is_unobtainable`) flags via the 3-tier hybrid resolver in `backend/missables_resolver.py` (Bundled + GitHub `achievement-scavenger-database` CDN -> Steam Community Guide `Missable` section parser -> SteamHunters `obtainability` API).
   - Persists pinned achievement IDs in `~/.config/next-unlock/settings.json`.
-  - Computes canonical recommendation scores and categories via `backend/recommendation.py`.
+  - Computes canonical recommendation scores, per-set progress, and categories via `backend/recommendation.py`.
 - **Frontend Service (`src/services/steamApi.ts`)**:
   - Maintains synchronous in-memory state (`getCachedState()`) + `localStorage` persistence so React components mount with data immediately when available.
   - Queries `window.SteamClient.Apps.GetMyAchievementsForApp` (when available in SteamOS CEF) to overlay the current user's exact `unlocked` status, `unlock_time`, and `progress` onto the achievement list.

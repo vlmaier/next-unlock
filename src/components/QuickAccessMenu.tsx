@@ -66,6 +66,11 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
   const topUpNext = (
     unpinnedUpNext.length > 0 ? unpinnedUpNext : effectiveRanked?.up_next || []
   ).slice(0, 3);
+  const lockedMissables = useMemo(() => {
+    return (effectiveRanked?.locked || []).filter((a) =>
+      Boolean(a.is_missable || a.category === 'Missable')
+    );
+  }, [effectiveRanked]);
   const hasAchievements = Boolean(game && (game.total_achievements || 0) > 0);
 
   const progressPct = activeSet
@@ -126,19 +131,30 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
 
         {/* Header Progress Bar or Status */}
         {game && hasAchievements ? (
-          <PanelSectionRow>
-            <ProgressBarWithInfo
-              nProgress={progressPct}
-              sOperationText={
-                activeSet
-                  ? activeSet.name
-                  : isRunningGame
-                  ? 'Running Now'
-                  : 'Completion'
-              }
-              sTimeRemaining={`${progressUnlocked} / ${progressTotal} (${progressPct}%)`}
-            />
-          </PanelSectionRow>
+          <>
+            <PanelSectionRow>
+              <ProgressBarWithInfo
+                nProgress={progressPct}
+                sOperationText={
+                  activeSet
+                    ? activeSet.name
+                    : isRunningGame
+                    ? 'Running Now'
+                    : 'Completion'
+                }
+                sTimeRemaining={`${progressUnlocked} / ${progressTotal} (${progressPct}%)`}
+              />
+            </PanelSectionRow>
+            {lockedMissables.length > 0 && (
+              <PanelSectionRow>
+                <Field
+                  label={`⚠️ ${lockedMissables.length} Missable Left`}
+                  description={lockedMissables.map((a) => a.name).join(' • ')}
+                  bottomSeparator="none"
+                />
+              </PanelSectionRow>
+            )}
+          </>
         ) : game ? (
           <PanelSectionRow>
             <Field

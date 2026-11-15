@@ -141,7 +141,7 @@ export function getProgressRatio(ach: Partial<Achievement>): number {
  * Higher score = closer to completion and easier/more common to unlock next.
  */
 export function computeRecommendationScore(ach: Partial<Achievement>): number {
-  if (ach.unlocked || ach.archived) return 0.0;
+  if (ach.unlocked || ach.archived || ach.is_unobtainable) return 0.0;
 
   const ratio = getProgressRatio(ach);
   const rawPct = typeof ach.global_percentage === 'number' ? ach.global_percentage : Number(ach.global_percentage) || 0;
@@ -247,15 +247,18 @@ export function rankAchievements(achievements: Achievement[], pinnedSet: Set<str
 
     const score = computeRecommendationScore(ach);
     ach.rec_score = score;
+    if (ach.category === 'Missable') {
+      ach.is_missable = true;
+    }
     const ratio = getProgressRatio(ach);
     const globalPct = ach.global_percentage || 0;
-    const isArchived = Boolean(ach.archived);
+    const isArchived = Boolean(ach.archived || ach.is_unobtainable);
 
     locked.push(ach);
     if (isPinned) pinned.push(ach);
     if (!isArchived && ratio >= 0.5) almost_there.push(ach);
     if (!isArchived && globalPct >= 25.0 && (!ach.hidden || ratio > 0)) easy_grabs.push(ach);
-    if (ach.hidden || ach.category === 'Missable' || globalPct <= 10.0) {
+    if (ach.is_missable || ach.category === 'Missable' || ach.hidden || globalPct <= 10.0) {
       missable.push(ach);
     }
   });
@@ -268,14 +271,21 @@ export function rankAchievements(achievements: Achievement[], pinnedSet: Set<str
     return (a.name || '').localeCompare(b.name || '');
   };
 
+  const missableSort = (a: Achievement, b: Achievement) => {
+    const aExp = a.is_missable || a.category === 'Missable' ? 0 : 1;
+    const bExp = b.is_missable || b.category === 'Missable' ? 0 : 1;
+    if (aExp !== bExp) return aExp - bExp;
+    return lockedSort(a, b);
+  };
+
   locked.sort(lockedSort);
   pinned.sort(lockedSort);
   almost_there.sort((a, b) => getProgressRatio(b) - getProgressRatio(a) || lockedSort(a, b));
   easy_grabs.sort((a, b) => (b.global_percentage || 0) - (a.global_percentage || 0) || (a.name || '').localeCompare(b.name || ''));
-  missable.sort(lockedSort);
+  missable.sort(missableSort);
   unlocked.sort((a, b) => (b.unlock_time || 0) - (a.unlock_time || 0) || (a.global_percentage || 0) - (b.global_percentage || 0));
 
-  const nonArchivedLocked = locked.filter((a) => !a.archived);
+  const nonArchivedLocked = locked.filter((a) => !a.archived && !a.is_unobtainable);
   const actionableLocked = nonArchivedLocked.filter(
     (a) => !a.hidden || getProgressRatio(a) > 0
   );

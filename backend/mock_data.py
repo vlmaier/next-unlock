@@ -76,6 +76,8 @@ MOCK_GAMES: list[GameData] = [
                 "progress": {"current": 8, "max": 9},
                 "set_id": 0,
                 "set_name": "Base Game",
+                "is_missable": True,
+                "missable_reason": "Must collect the Bolt of Gransax in Leyndell, Royal Capital before defeating Maliketh in Crumbling Farum Azula.",
             },
             {
                 "id": "ACH_GODDEVOURING_SERPENT",
@@ -104,6 +106,8 @@ MOCK_GAMES: list[GameData] = [
                 "set_id": 1,
                 "set_name": "Shadow of the Erdtree",
                 "dlc_appid": 2778580,
+                "is_missable": True,
+                "missable_reason": "Complete Ranni's questline and summon her sign after the final boss before choosing another ending.",
             },
             {
                 "id": "ACH_MALENIA",
@@ -201,6 +205,8 @@ MOCK_GAMES: list[GameData] = [
                 "set_id": 1,
                 "set_name": "Phantom Liberty",
                 "dlc_appid": 2138330,
+                "is_missable": True,
+                "missable_reason": "Complete Rogue's side quests (Blistering Love) before the Nocturne Op55N1 point of no return.",
             },
         ],
     },

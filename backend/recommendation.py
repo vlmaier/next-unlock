@@ -42,9 +42,9 @@ def compute_recommendation_score(ach: Mapping[str, object]) -> float:
       rec_score = round((ratio * 60.0) + (global_pct * 0.8) + visibility_bonus, 1)
 
     Higher score = easier / closer to completion = recommended next.
-    Unlocked and archived (retired) achievements always score 0.0.
+    Unlocked, archived (retired), and unobtainable achievements always score 0.0.
     """
-    if bool(ach.get("unlocked")) or bool(ach.get("archived")):
+    if bool(ach.get("unlocked")) or bool(ach.get("archived")) or bool(ach.get("is_unobtainable")):
         return 0.0
 
     ratio = get_progress_ratio(ach)
@@ -101,6 +101,13 @@ def _clone_achievement(
         ach["dlc_appid"] = raw_dlc
     if bool(raw_ach.get("archived", False)):
         ach["archived"] = True
+    if bool(raw_ach.get("is_missable", False)) or raw_ach.get("category") == "Missable":
+        ach["is_missable"] = True
+    raw_reason = raw_ach.get("missable_reason")
+    if isinstance(raw_reason, str) and raw_reason:
+        ach["missable_reason"] = raw_reason
+    if bool(raw_ach.get("is_unobtainable", False)):
+        ach["is_unobtainable"] = True
 
     prog = raw_ach.get("progress")
     if isinstance(prog, Mapping):
@@ -234,7 +241,7 @@ def rank_achievements(
         ach = _clone_achievement(raw_ach, is_pinned=is_pinned, rec_score=score)
         ratio = get_progress_ratio(ach)
         global_pct = ach["global_percentage"]
-        is_archived = bool(ach.get("archived", False))
+        is_archived = bool(ach.get("archived", False)) or bool(ach.get("is_unobtainable", False))
 
         if is_pinned:
             ranked["pinned"].append(ach)
@@ -245,7 +252,12 @@ def rank_achievements(
         if not is_archived and global_pct >= 25.0 and (not ach["hidden"] or ratio > 0):
             ranked["easy_grabs"].append(ach)
 
-        if ach["hidden"] or ach.get("category") == "Missable" or global_pct <= 10.0:
+        if (
+            bool(ach.get("is_missable", False))
+            or ach.get("category") == "Missable"
+            or ach["hidden"]
+            or global_pct <= 10.0
+        ):
             ranked["missable"].append(ach)
 
         ranked["locked"].append(ach)
@@ -257,13 +269,22 @@ def rank_achievements(
             a["name"],
         )
 
+    def missable_sort_key(a: AchievementData) -> tuple[int, float, float, str]:
+        explicit_missable = 0 if (a.get("is_missable") or a.get("category") == "Missable") else 1
+        return (
+            explicit_missable,
+            -float(a.get("rec_score", 0.0)),
+            -float(a["global_percentage"]),
+            a["name"],
+        )
+
     ranked["locked"].sort(key=locked_sort_key)
     ranked["pinned"].sort(key=locked_sort_key)
     ranked["almost_there"].sort(
         key=lambda a: (-get_progress_ratio(a), -float(a.get("rec_score", 0.0)))
     )
     ranked["easy_grabs"].sort(key=lambda a: (-float(a["global_percentage"]), a["name"]))
-    ranked["missable"].sort(key=locked_sort_key)
+    ranked["missable"].sort(key=missable_sort_key)
     ranked["unlocked"].sort(
         key=lambda a: (
             -(int(a["unlock_time"] or 0)),
@@ -271,9 +292,13 @@ def rank_achievements(
         )
     )
 
-    # For Up Next, exclude archived achievements and prefer visible achievements
+    # For Up Next, exclude archived/unobtainable achievements and prefer visible achievements
     # or achievements with active progress.
-    non_archived_locked = [a for a in ranked["locked"] if not a.get("archived", False)]
+    non_archived_locked = [
+        a
+        for a in ranked["locked"]
+        if not a.get("archived", False) and not a.get("is_unobtainable", False)
+    ]
     actionable_locked = [
         a for a in non_archived_locked if not a["hidden"] or get_progress_ratio(a) > 0
     ]

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Achievement } from '../types/achievement';
 import { AchievementIcon } from './AchievementIcon';
-import { Pin, CheckCircle2, Eye, BookOpen } from 'lucide-react';
+import { Pin, CheckCircle2, Eye, BookOpen, AlertTriangle, Ban } from 'lucide-react';
 import { Focusable } from './deckyUi';
 import { openAchievementGuide } from '../services/steamApi';
 
@@ -62,6 +62,8 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
   const isMaskedSecret = Boolean(
     achievement.hidden && !achievement.unlocked && !revealHidden && !forceRevealSpoilers
   );
+  const isMissable = Boolean(achievement.is_missable || achievement.category === 'Missable');
+  const isUnobtainable = Boolean(achievement.is_unobtainable);
 
   const resolvedAppId = achievement.appid || appid;
 
@@ -155,6 +157,24 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
                   Archived
                 </span>
               )}
+              {isMissable && (
+                <span
+                  data-testid={`missable-badge-${achievement.id}`}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/35 font-bold flex items-center gap-1"
+                >
+                  <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />
+                  <span>Missable</span>
+                </span>
+              )}
+              {isUnobtainable && (
+                <span
+                  data-testid={`unobtainable-badge-${achievement.id}`}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/35 font-bold flex items-center gap-1"
+                >
+                  <Ban className="w-2.5 h-2.5 text-rose-400" />
+                  <span>Unobtainable</span>
+                </span>
+              )}
               {achievement.hidden && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium">
                   {isRevealedSecret ? 'Secret • Revealed' : 'Secret'}
@@ -205,6 +225,19 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
           </p>
         )}
       </div>
+
+      {/* Point-of-No-Return Missable Cutoff Warning */}
+      {!isMaskedSecret && !achievement.unlocked && achievement.missable_reason && (
+        <div
+          data-testid={`missable-reason-${achievement.id}`}
+          className="px-2.5 py-1.5 rounded bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-200/95 leading-snug flex items-start gap-1.5"
+        >
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <span className="line-clamp-2">
+            <strong className="font-bold text-amber-300">Cutoff:</strong> {achievement.missable_reason}
+          </span>
+        </div>
+      )}
 
       {/* Progress Bar (Only shown when multi-step progress is tracked) */}
       {hasProgress && (

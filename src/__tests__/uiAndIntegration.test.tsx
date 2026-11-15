@@ -165,6 +165,17 @@ describe('UI Surfaces, No-Active-Game Mode & Full-Stack Python Integration', () 
       const allTab = screen.getByTestId('category-tab-all');
       expect(allTab.textContent).toContain('4');
       expect(screen.getByText('Base Game Achievements')).toBeTruthy();
+      expect(screen.getByTestId('missable-badge-ACH_LEGENDARY_ARMAMENTS')).toBeTruthy();
+      expect(screen.getByTestId('missable-reason-ACH_LEGENDARY_ARMAMENTS').textContent).toContain(
+        'Bolt of Gransax'
+      );
+    });
+
+    // Clicking the Hero Missable Radar button filters strictly to locked missable achievements
+    fireEvent.click(screen.getByTestId('missable-radar-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('achievement-card-ACH_LEGENDARY_ARMAMENTS')).toBeTruthy();
+      expect(screen.queryByTestId('achievement-card-ACH_GODDEVOURING_SERPENT')).toBeNull();
     });
   });
 

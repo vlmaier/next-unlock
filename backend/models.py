@@ -23,6 +23,9 @@ class _AchievementOptional(TypedDict, total=False):
     set_name: str
     dlc_appid: int
     archived: bool
+    is_missable: bool
+    missable_reason: str
+    is_unobtainable: bool
 
 
 class AchievementData(_AchievementOptional):

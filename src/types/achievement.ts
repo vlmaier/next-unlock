@@ -36,6 +36,9 @@ export interface Achievement {
   set_name?: string;
   dlc_appid?: number;
   archived?: boolean;
+  is_missable?: boolean;
+  missable_reason?: string;
+  is_unobtainable?: boolean;
 }
 
 export interface AchievementSet {

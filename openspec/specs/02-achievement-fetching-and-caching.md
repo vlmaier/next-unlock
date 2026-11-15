@@ -20,6 +20,13 @@ Defines how achievement schemas and global rarity stats are fetched from Steam C
      - `set_name`: `str` (`"Base Game"` when `id == 0` and `name == ""`, or the group's display name)
      - `dlc_appid`: `int` (when `dlcappid > 0`)
      - `archived`: `bool` (`True` if the achievement or its parent set is retired/archived)
+     - `is_missable`: `bool` (`True` if the achievement can be permanently missed in a playthrough)
+     - `missable_reason`: `str` (concise spoiler-light point-of-no-return cutoff warning or chapter)
+     - `is_unobtainable`: `bool` (`True` if broken/discontinued per community tracker data)
+   - **3-Tier Hybrid Missable & Unobtainable Enrichment (`backend/missables_resolver.py`)**:
+     - **Tier 1 (Curated Bundled DB + `achievement-scavenger-database` GitHub Raw CDN)**: Matches `appid` against built-in curated missables and `https://raw.githubusercontent.com/batureren/achievement-scavenger-database/main/games/<appid>.json` by achievement `id` (`apiname`) or normalized `name` (`display_name`), populating `is_missable` and `missable_reason`.
+     - **Tier 2 (Steam Community Guide "Missable" Section Parser)**: For games not in Tier 1, `parse_steam_guide_missables(guide_html, achievements)` parses top-rated Steam Guide subsections titled `Missable` / `Point of No Return` (or inline `MISSABLE WARNING` callouts) to flag matching achievements without spamming `steamcommunity.com`.
+     - **Tier 3 (SteamHunters Public API Unobtainable Check)**: Queries `https://steamhunters.com/api/apps/<appid>/achievements` and sets `is_unobtainable = True` when `obtainability != 0`.
    - Each game envelope and `GameData` payload includes `achievement_sets`:
    ```json
    {
