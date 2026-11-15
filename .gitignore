@@ -6,16 +6,20 @@ node_modules/
 dist/
 build/
 build_stage/
+.dev_sandbox/
 src/generated.css
 *.egg-info/
 *.zip
 
-# Python
+# Python & Astral
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .pytest_cache/
+.ruff_cache/
+.coverage
+coverage/
 venv/
 .venv/
 

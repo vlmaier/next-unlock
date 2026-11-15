@@ -1,23 +1,23 @@
 import React from 'react';
 
-// Safely get DFL from global window (Decky Frontend Library)
-const getDFL = () => {
+// Dynamically resolve DFL from global window on every call so late-initialized
+// Decky globals or test harness mocks are always picked up immediately.
+export const getDFL = (): any => {
   if (typeof window !== 'undefined') {
-    return (window as any).DFL || (window as any).DeckyPluginLoader?.dfl || {};
+    const w = window as any;
+    return w.DFL || w.DeckyPluginLoader?.dfl || {};
   }
   return {};
 };
 
-const dfl = getDFL();
-
 // 1. PanelSection
 export const PanelSection: React.FC<{ title?: string; children?: React.ReactNode }> = (props) => {
-  const Real = dfl.PanelSection;
+  const Real = getDFL().PanelSection;
   if (Real) return <Real {...props} />;
   return (
-    <div className="flex flex-col gap-2 p-3 bg-[#161d27] rounded-xl border border-slate-700/60 my-2">
+    <div className="flex flex-col gap-2 p-3 bg-[#161f2c] rounded-lg border border-[#2a384b] my-1.5">
       {props.title && (
-        <div className="text-xs font-bold text-sky-400 uppercase tracking-wider px-1">
+        <div className="text-[11px] font-bold text-[#389fff] uppercase tracking-wider px-0.5">
           {props.title}
         </div>
       )}
@@ -28,9 +28,9 @@ export const PanelSection: React.FC<{ title?: string; children?: React.ReactNode
 
 // 2. PanelSectionRow
 export const PanelSectionRow: React.FC<{ children?: React.ReactNode }> = (props) => {
-  const Real = dfl.PanelSectionRow;
+  const Real = getDFL().PanelSectionRow;
   if (Real) return <Real {...props} />;
-  return <div className="w-full flex flex-col gap-1 py-1">{props.children}</div>;
+  return <div className="w-full flex flex-col gap-1 py-0.5">{props.children}</div>;
 };
 
 // 3. Field
@@ -47,41 +47,59 @@ export interface FieldProps {
 }
 
 export const Field: React.FC<FieldProps> = (props) => {
-  const Real = dfl.Field;
+  const Real = getDFL().Field;
   if (Real) return <Real {...props} />;
+  const handler = props.onClick || props.onActivate;
   return (
     <div
-      onClick={props.onClick || props.onActivate}
-      className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/40 cursor-pointer transition-colors"
+      tabIndex={props.focusable || handler ? 0 : undefined}
+      role={handler ? 'button' : undefined}
+      onClick={handler}
+      onKeyDown={(e) => {
+        if (handler && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          handler(e);
+        }
+      }}
+      className={`w-full flex items-center justify-between p-2.5 rounded-lg bg-[#1e293b]/80 border border-[#2a384b] transition-colors ${
+        handler
+          ? 'hover:bg-[#263449] hover:border-[#389fff]/60 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#389fff]'
+          : ''
+      }`}
     >
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
         {props.icon && <div className="flex-shrink-0">{props.icon}</div>}
         <div className="min-w-0 flex-1">
           {props.label && <div className="text-xs font-bold text-slate-100 truncate">{props.label}</div>}
           {props.description && (
-            <div className="text-[11px] text-slate-400 truncate">{props.description}</div>
+            <div className="text-[11px] text-slate-400 line-clamp-2 leading-snug mt-0.5">{props.description}</div>
           )}
         </div>
       </div>
-      {props.children && <div className="flex-shrink-0 ml-2">{props.children}</div>}
+      {props.children && <div className="flex-shrink-0 ml-2.5">{props.children}</div>}
     </div>
   );
 };
 
 // 4. DropdownItem
 export const DropdownItem: React.FC<any> = (props) => {
-  const Real = dfl.DropdownItem;
+  const Real = getDFL().DropdownItem;
   if (Real) return <Real {...props} />;
   return (
     <div className="w-full flex flex-col gap-1">
-      {props.label && <span className="text-xs text-slate-300 font-semibold">{props.label}</span>}
+      {props.label && <span className="text-[11px] text-slate-300 font-semibold">{props.label}</span>}
       <select
+        aria-label={typeof props.label === 'string' ? props.label : 'Select Game'}
         value={props.selectedOption}
-        onChange={(e) => props.onChange?.({ data: Number(e.target.value) || e.target.value })}
-        className="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-lg p-2 focus:outline-none"
+        onChange={(e) => {
+          const raw = e.target.value;
+          const num = Number(raw);
+          props.onChange?.({ data: !isNaN(num) && raw !== '' ? num : raw });
+        }}
+        className="w-full bg-[#1e293b] border border-[#344359] hover:border-[#389fff] text-slate-100 text-xs font-semibold rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-[#389fff] cursor-pointer"
       >
         {props.rgOptions?.map((opt: any) => (
-          <option key={opt.data} value={opt.data}>
+          <option key={String(opt.data)} value={opt.data}>
             {opt.label}
           </option>
         ))}
@@ -92,17 +110,20 @@ export const DropdownItem: React.FC<any> = (props) => {
 
 // 5. ProgressBarWithInfo
 export const ProgressBarWithInfo: React.FC<any> = (props) => {
-  const Real = dfl.ProgressBarWithInfo;
+  const Real = getDFL().ProgressBarWithInfo;
   if (Real) return <Real {...props} />;
-  const pct = Math.min(100, Math.max(0, props.nProgress || 0));
+  const pct = Math.min(100, Math.max(0, Number(props.nProgress) || 0));
   return (
-    <div className="w-full flex flex-col gap-1.5 p-2 bg-slate-800/40 rounded-lg border border-slate-700/50">
+    <div className="w-full flex flex-col gap-1.5 p-2.5 bg-[#1e293b]/70 rounded-lg border border-[#2a384b]">
       <div className="flex justify-between text-xs font-semibold text-slate-200">
         <span>{props.sOperationText || 'Progress'}</span>
-        <span className="text-sky-400">{props.sTimeRemaining || `${pct}%`}</span>
+        <span className="text-[#389fff] font-bold">{props.sTimeRemaining || `${pct}%`}</span>
       </div>
-      <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
-        <div className="h-full bg-sky-500 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+      <div className="w-full h-2 bg-[#0e141b] rounded-full overflow-hidden">
+        <div
+          className="h-full bg-[#389fff] rounded-full transition-all duration-300"
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
   );
@@ -110,13 +131,15 @@ export const ProgressBarWithInfo: React.FC<any> = (props) => {
 
 // 6. ButtonItem
 export const ButtonItem: React.FC<any> = (props) => {
-  const Real = dfl.ButtonItem;
+  const Real = getDFL().ButtonItem;
   if (Real) return <Real {...props} />;
+  const handler = props.onClick || props.onActivate;
   return (
     <button
-      onClick={props.onClick}
+      type="button"
+      onClick={handler}
       disabled={props.disabled}
-      className="w-full py-2 px-3 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer text-center"
+      className="w-full py-2 px-3 bg-[#243247] hover:bg-[#389fff] active:bg-[#1e88e5] disabled:opacity-50 text-slate-100 hover:text-white text-xs font-bold rounded-lg border border-[#344359] hover:border-[#389fff] transition-all cursor-pointer text-center focus:outline-none focus:ring-2 focus:ring-[#389fff]"
     >
       {props.children}
     </button>
@@ -125,35 +148,71 @@ export const ButtonItem: React.FC<any> = (props) => {
 
 // 7. SteamSpinner
 export const SteamSpinner: React.FC<any> = (props) => {
-  const Real = dfl.SteamSpinner;
+  const Real = getDFL().SteamSpinner;
   if (Real) return <Real {...props} />;
   return (
-    <div className="w-8 h-8 border-3 border-sky-500/30 border-t-sky-500 rounded-full animate-spin my-4 mx-auto" />
+    <div
+      role="status"
+      aria-label="Loading"
+      className="w-7 h-7 border-2 border-[#389fff]/30 border-t-[#389fff] rounded-full animate-spin my-3 mx-auto"
+    />
   );
 };
 
-// 8. Navigation & Router helpers
-export const Navigation = dfl.Navigation || {
+// 8. Navigation & Router helpers (resolved dynamically on each call)
+export const Navigation = {
   Navigate: (path: string) => {
-    console.log('[Mock Navigation] Navigate to', path);
-    window.location.hash = path;
+    const nav = getDFL().Navigation || (typeof window !== 'undefined' ? (window as any).Navigation : null);
+    if (nav?.Navigate) {
+      nav.Navigate(path);
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      window.location.hash = path;
+      window.dispatchEvent(new CustomEvent('next-unlock:navigate', { detail: { path } }));
+    }
   },
   NavigateBack: () => {
-    console.log('[Mock Navigation] NavigateBack');
-    window.history.back();
+    const nav = getDFL().Navigation || (typeof window !== 'undefined' ? (window as any).Navigation : null);
+    if (nav?.NavigateBack) {
+      nav.NavigateBack();
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('next-unlock:navigate-back'));
+      if (window.history.length > 1) {
+        window.history.back();
+      }
+    }
   },
   CloseSideMenus: () => {
-    console.log('[Mock Navigation] CloseSideMenus');
+    const nav = getDFL().Navigation || (typeof window !== 'undefined' ? (window as any).Navigation : null);
+    if (nav?.CloseSideMenus) {
+      nav.CloseSideMenus();
+    }
   },
 };
 
-export const Router = dfl.Router || (typeof window !== 'undefined' ? (window as any).Router : null);
-export const staticClasses = dfl.staticClasses || { Title: 'font-bold text-sm' };
-export const showModal = dfl.showModal || ((el: any) => console.log('[Mock showModal]', el));
-export const ModalRoot = dfl.ModalRoot || (({ children }: any) => <div>{children}</div>);
+export const staticClasses = {
+  get Title() {
+    return getDFL().staticClasses?.Title || 'font-bold text-sm';
+  },
+};
+
+export const showModal = (el: any) => {
+  const fn = getDFL().showModal;
+  if (typeof fn === 'function') return fn(el);
+};
+
+export const ModalRoot: React.FC<any> = (props) => {
+  const Real = getDFL().ModalRoot;
+  if (Real) return <Real {...props} />;
+  return <div>{props.children}</div>;
+};
+
 export type SingleDropdownOption = { data: any; label: React.ReactNode };
 
-// 9. Focusable for SteamOS Gamepad / Controller Navigation
+// 9. Focusable for SteamOS Gamepad / Controller + Mouse Navigation
 export interface FocusableProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
   focusable?: boolean;
@@ -166,12 +225,14 @@ export interface FocusableProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const Focusable: React.FC<FocusableProps> = (props) => {
-  const Real =
-    dfl.Focusable ||
-    (typeof window !== 'undefined' &&
-      ((window as any).DFL?.Focusable || (window as any).DeckyPluginLoader?.dfl?.Focusable));
+  const Real = getDFL().Focusable;
   if (Real) {
-    return <Real {...props} />;
+    // Ensure both gamepad onActivate and pointer onClick work seamlessly in SteamOS CEF
+    const mergedProps = {
+      ...props,
+      onClick: props.onClick || props.onActivate,
+    };
+    return <Real {...mergedProps} />;
   }
 
   const {
@@ -180,25 +241,31 @@ export const Focusable: React.FC<FocusableProps> = (props) => {
     onActivate,
     onClick,
     onCancel,
-    focusClassName = 'ring-2 ring-sky-400 scale-[1.01] shadow-lg',
+    focusClassName = 'ring-2 ring-[#389fff]',
     className = '',
     style,
     ...rest
   } = props;
 
+  const isInteractive = Boolean(onActivate || onClick);
+
   return (
     <div
-      tabIndex={focusable ? 0 : undefined}
-      onClick={onActivate || onClick}
+      tabIndex={focusable && isInteractive ? 0 : undefined}
+      onClick={onClick || onActivate}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
+          e.stopPropagation();
           (onActivate || onClick)?.(e as any);
-        } else if (e.key === 'Escape') {
-          onCancel?.(e as any);
+        } else if (e.key === 'Escape' && onCancel) {
+          e.preventDefault();
+          onCancel(e as any);
         }
       }}
-      className={`focus:outline-none focus:${focusClassName} transition-all cursor-pointer ${className}`}
+      className={`focus:outline-none focus-visible:${focusClassName} transition-all ${
+        isInteractive ? 'cursor-pointer' : ''
+      } ${className}`}
       style={style}
       {...rest}
     >

@@ -4,34 +4,47 @@
 
 ---
 
-## Installation
+## One-Command Steam Deck Installation & Update
 
-Download `next-unlock.zip` and run in Steam Deck Desktop Mode terminal (Konsole):
+Run this single command in **Steam Deck Desktop Mode (Konsole)** or over **SSH** — no prerequisites required, and any existing installation is updated automatically while preserving your pinned achievements:
 
 ```bash
-unzip -o next-unlock.zip -d ~/homebrew/plugins/ && sudo systemctl restart plugin_loader
+curl -fsSL https://raw.githubusercontent.com/vlmaier/next-unlock/main/install.sh | sh
+```
+
+### Offline / Manual Zip Installation
+
+If you downloaded `next-unlock.zip` from [GitHub Releases](https://github.com/vlmaier/next-unlock/releases) manually:
+
+```bash
+sudo rm -rf ~/homebrew/plugins/next-unlock && sudo unzip -o ~/Downloads/next-unlock.zip -d ~/homebrew/plugins/ && sudo chmod -R 755 ~/homebrew/plugins/next-unlock && sudo systemctl restart plugin_loader
 ```
 
 ---
 
-## Development
+## Development & Pre-Steam Deck Emulator (`just` + Astral Python + Vite)
+
+We use [`just`](https://github.com/casey/just), the Astral Python suite (`uv`, `ruff`, `ty`, `pytest`), and `pnpm` (`tsc`, `vitest`, `rollup`).
 
 ```bash
-# Install dependencies
-pnpm install
+# Install Node & Python dependencies
+just setup
 
-# Run unit test suites (Frontend Vitest + Python unittest)
-pnpm test
+# Start the live SteamOS & Decky Loader browser emulator (http://127.0.0.1:5173/)
+just dev
 
-# Build production plugin bundle
-pnpm run build
+# Run the full SDLC verification gate (ruff, ty, tsc, pytest, vitest, bundle smoke, zip verify)
+just verify
+
+# Build and verify release zip (next-unlock.zip)
+just package
 ```
 
 ---
 
 ## Features
 
-- **Smart Filtering**: Up Next, Almost There, Easy Grabs, Missable, Pinned, Unlocked.
-- **Dual UI Modes**: 320px Quick Access Menu (QAM) drawer & fullscreen dashboard.
-- **5 Dark Themes**: Valve DeckOS, PlayStation Platinum, GOG Galaxy, Nordic Espresso, Stealth Monochrome OLED.
-- **Clean UI**: Strict AAA dark mode aesthetics & SVG iconography (Lucide).
+- **Actionable Recommendation Engine (`Up Next`)**: Prioritizes achievements with active multi-step progress (`Almost There`, $\ge 50\%$) and high global unlock rates (`Easy Grabs`, $\ge 25\%$) over ultra-rare grinds.
+- **Works With or Without an Active Game**: Browse your entire installed Steam library from the Quick Access Menu (`320px` drawer) or the Fullscreen Dashboard (`/next-unlock`), even when no game is running.
+- **0ms Synchronous Cache Recall**: Instantaneous UI rendering from in-memory + `localStorage` + disk caches with immediate background refresh and pin synchronization.
+- **Native SteamOS Slate UX**: Controller-first `Focusable` navigation, uncropped `460:215` Steam store capsules, and clean SteamOS typography.

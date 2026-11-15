@@ -1,204 +1,275 @@
 """
-Rich mock dataset for Next Unlock development and testing.
-Includes realistic games, achievement lists, rarity percentages, categories, and progress.
+Rich, internally-consistent mock dataset for Next Unlock development and testing.
+Matches src/services/mockSteamClient.ts 1:1 for deterministic full-stack testing.
 """
 
-MOCK_GAMES = [
+from __future__ import annotations
+
+from backend.models import GameData
+
+MOCK_GAMES: list[GameData] = [
     {
         "appid": 1245620,
         "name": "Elden Ring",
-        "header_image": "https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg",
-        "total_achievements": 42,
-        "unlocked_count": 34,
-        "completion_percentage": 80.9,
+        "header_image": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg",
+        "total_achievements": 6,
+        "unlocked_count": 2,
+        "completion_percentage": 33.3,
         "achievements": [
+            {
+                "id": "ACH_MARGIT",
+                "name": "Margit, the Fell Omen",
+                "description": "Defeated Margit, the Fell Omen in Stormveil Castle.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/9844ceb487fa8702ef9fddf8cf09b3767d985a14.jpg",
+                "unlocked": True,
+                "unlock_time": 1703980800,
+                "global_percentage": 70.9,
+                "rarity_tier": "common",
+                "category": "Story",
+                "hidden": False,
+            },
             {
                 "id": "ACH_ELDEN_LORD",
                 "name": "Elden Lord",
-                "description": "Achieved the 'Elden Lord' ending.",
-                "icon": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/1245620/b382d61dd2674e1d3bc01b4aef9b20ab1e71e723.jpg",
+                "description": 'Achieved the "Elden Lord" ending.',
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/e50726be4aca4d2b1f5f14d36859fc8e6f710097.jpg",
                 "unlocked": True,
                 "unlock_time": 1704067200,
                 "global_percentage": 24.5,
                 "rarity_tier": "common",
                 "category": "Story",
                 "hidden": False,
-                "progress": {"current": 1, "max": 1}
-            },
-            {
-                "id": "ACH_MALENIA",
-                "name": "Shardbearer Malenia",
-                "description": "Defeated Shardbearer Malenia.",
-                "icon": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/1245620/c213454efb5ef6017daaa0ef82c2a05d8fcd6749.jpg",
-                "unlocked": False,
-                "unlock_time": None,
-                "global_percentage": 4.1,
-                "rarity_tier": "ultra_rare",
-                "category": "Up Next",
-                "hidden": False,
-                "progress": {"current": 85, "max": 100},
-                "estimated_minutes": 45,
-                "hint": "Target Haligtree area, prepare bleed or frost weapons."
             },
             {
                 "id": "ACH_LEGENDARY_ARMAMENTS",
                 "name": "Legendary Armaments",
-                "description": "Acquired all legendary armaments.",
-                "icon": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/1245620/a9b5f543881dfd7b1029ab095bc37f00d350aa1b.jpg",
+                "description": "Acquired all 9 legendary armaments across the Lands Between.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/212ba99b5c0bf79aca54dfc0a9767a108adc8f40.jpg",
                 "unlocked": False,
                 "unlock_time": None,
                 "global_percentage": 9.2,
                 "rarity_tier": "rare",
-                "category": "Almost There",
                 "hidden": False,
                 "progress": {"current": 8, "max": 9},
-                "estimated_minutes": 20,
-                "hint": "Only Bolt of Gransax is missing in Leyndell."
             },
             {
                 "id": "ACH_GODDEVOURING_SERPENT",
                 "name": "Rykard, Lord of Blasphemy",
-                "description": "Defeated Rykard, Lord of Blasphemy.",
-                "icon": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/1245620/5d4817a5ef0921ec5662243d4f40ffbfaef449f8.jpg",
+                "description": "Defeated Rykard, Lord of Blasphemy in Volcano Manor.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/cb0aec39fcc664c4e586750177178b6814a52e0d.jpg",
                 "unlocked": False,
                 "unlock_time": None,
                 "global_percentage": 35.8,
                 "rarity_tier": "common",
-                "category": "Easy Grabs",
                 "hidden": False,
-                "progress": {"current": 0, "max": 1},
-                "estimated_minutes": 15,
-                "hint": "Use Serpent-Hunter spear in Volcano Manor arena."
             },
             {
                 "id": "ACH_AGE_OF_STARS",
                 "name": "Age of the Stars",
-                "description": "Achieved the 'Age of the Stars' ending.",
-                "icon": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/1245620/190886a113dbb3046bc0fdf78e2448408f6cf9ee.jpg",
+                "description": 'Achieved the "Age of the Stars" ending.',
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/7e7369bceba13739025766a72560fe9ce7ac56c9.jpg",
                 "unlocked": False,
                 "unlock_time": None,
                 "global_percentage": 28.2,
-                "rarity_tier": "rare",
+                "rarity_tier": "common",
                 "category": "Missable",
                 "hidden": True,
-                "progress": {"current": 4, "max": 5},
-                "estimated_minutes": 30,
-                "hint": "Complete Ranni's questline before finishing the final boss."
-            }
-        ]
+            },
+            {
+                "id": "ACH_MALENIA",
+                "name": "Shardbearer Malenia",
+                "description": "Defeated Shardbearer Malenia, Blade of Miquella in Elphael.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/f704fcd82daf933dd3ce81c4d8ffea3ec65f26f4.jpg",
+                "unlocked": False,
+                "unlock_time": None,
+                "global_percentage": 4.1,
+                "rarity_tier": "ultra_rare",
+                "hidden": False,
+            },
+        ],
     },
     {
         "appid": 1091500,
         "name": "Cyberpunk 2077",
-        "header_image": "https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg",
-        "total_achievements": 44,
-        "unlocked_count": 39,
-        "completion_percentage": 88.6,
+        "header_image": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1091500/e9047d8ec47ae3d94bb8b464fb0fc9e9972b4ac7/header.jpg",
+        "total_achievements": 4,
+        "unlocked_count": 1,
+        "completion_percentage": 25.0,
         "achievements": [
             {
-                "id": "ACH_NIGHT_CITY_LEGEND",
-                "name": "Night City Legend",
-                "description": "Complete all Cyberpunk 2077 achievements.",
-                "icon": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/1091500/524317f2bc29285098939c3e9cb19cfba98031d8.jpg",
-                "unlocked": False,
-                "unlock_time": None,
-                "global_percentage": 3.8,
-                "rarity_tier": "ultra_rare",
-                "category": "Up Next",
+                "id": "ACH_THE_FOOL",
+                "name": "The Fool",
+                "description": "Become a mercenary and complete the prologue in Night City.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1091500/7975d6e5d790b88f030195e3b1a38e49a5de1c8d.jpg",
+                "unlocked": True,
+                "unlock_time": 1710000000,
+                "global_percentage": 88.5,
+                "rarity_tier": "common",
                 "hidden": False,
-                "progress": {"current": 39, "max": 44},
-                "estimated_minutes": 90,
-                "hint": "Finish remaining 5 gig trophies."
             },
             {
                 "id": "ACH_AUTOPILOT",
                 "name": "Autorestart",
-                "description": "Perform a Quickhack on 3 enemies at once.",
-                "icon": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/1091500/039dfeb5ca1029c782782ec9908cf8b5bc0ad167.jpg",
+                "description": "Perform a Quickhack upload on 3 cyberware enemies simultaneously.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1091500/b3d81a567599dacdbf32fa024e4d9baafc19599b.jpg",
                 "unlocked": False,
                 "unlock_time": None,
                 "global_percentage": 42.1,
                 "rarity_tier": "common",
-                "category": "Easy Grabs",
                 "hidden": False,
                 "progress": {"current": 2, "max": 3},
-                "estimated_minutes": 5,
-                "hint": "Use Contagion hack in a crowded gang area."
-            }
-        ]
+            },
+            {
+                "id": "ACH_CITY_LIGHTS",
+                "name": "City Lights",
+                "description": "Complete all gigs and NCPD Scanner Hustles in City Center.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1091500/31d389c6630c86434f193e7645cc78d22a790bff.jpg",
+                "unlocked": False,
+                "unlock_time": None,
+                "global_percentage": 18.4,
+                "rarity_tier": "common",
+                "hidden": False,
+                "progress": {"current": 9, "max": 12},
+            },
+            {
+                "id": "ACH_NIGHT_CITY_LEGEND",
+                "name": "Legend of The Afterlife",
+                "description": "Reach maximum Street Cred and complete Rogue's storyline.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1091500/997859e0c89dda10f11a091a566999e68e6f9ce3.jpg",
+                "unlocked": False,
+                "unlock_time": None,
+                "global_percentage": 3.8,
+                "rarity_tier": "ultra_rare",
+                "hidden": False,
+            },
+        ],
     },
     {
         "appid": 1145350,
         "name": "Hades II",
-        "header_image": "https://cdn.cloudflare.steamstatic.com/steam/apps/1145350/header.jpg",
-        "total_achievements": 38,
-        "unlocked_count": 31,
-        "completion_percentage": 81.5,
+        "header_image": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145350/91ac334a2c137d08968ccc0bc474a02579602100/header.jpg",
+        "total_achievements": 4,
+        "unlocked_count": 2,
+        "completion_percentage": 50.0,
         "achievements": [
+            {
+                "id": "ACH_EREBUS",
+                "name": "Witch of the Woods",
+                "description": "Clear Erebus and reach the edge of Oceanus.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1145350/974c728e91ee0068539259f7cc6f4bc5f3373fd8.jpg",
+                "unlocked": True,
+                "unlock_time": 1714900000,
+                "global_percentage": 68.8,
+                "rarity_tier": "common",
+                "hidden": False,
+            },
             {
                 "id": "ACH_CHRONOS_DOWN",
                 "name": "Time Is Up",
-                "description": "Vanquish Chronos in the Underworld.",
-                "icon": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/1145350/a9b5f543881dfd7b1029ab095bc37f00d350aa1b.jpg",
+                "description": "Vanquish Chronos in the depths of Tartarus.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1145350/60027445235d9c9f118df7c7e006e9dc8928781f.jpg",
                 "unlocked": True,
                 "unlock_time": 1715000000,
                 "global_percentage": 32.1,
                 "rarity_tier": "common",
-                "category": "Story",
                 "hidden": False,
-                "progress": {"current": 1, "max": 1}
+            },
+            {
+                "id": "ACH_TARTARUS",
+                "name": "Witch of the Abyss",
+                "description": "Reach the House of Hades in the depths of Tartarus.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1145350/810e785977be190207d8be8ef1f4eeba83b3f3b2.jpg",
+                "unlocked": False,
+                "unlock_time": None,
+                "global_percentage": 46.8,
+                "rarity_tier": "common",
+                "hidden": False,
             },
             {
                 "id": "ACH_ALL_ASPECTS",
                 "name": "Master of Arms",
-                "description": "Unlock all Nocturnal Arms aspects.",
-                "icon": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/1145350/5d4817a5ef0921ec5662243d4f40ffbfaef449f8.jpg",
+                "description": "Unlock all 6 Nocturnal Arms aspects at the Silver Pool.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1145350/2f8d693ca8f4c5d1f809b5ca8052656dc530b31a.jpg",
                 "unlocked": False,
                 "unlock_time": None,
                 "global_percentage": 6.8,
                 "rarity_tier": "rare",
-                "category": "Up Next",
                 "hidden": False,
-                "progress": {"current": 11, "max": 12},
-                "estimated_minutes": 25,
-                "hint": "Collect 2 more Nightmare resources."
-            }
-        ]
+                "progress": {"current": 5, "max": 6},
+            },
+        ],
     },
     {
         "appid": 367520,
         "name": "Hollow Knight",
-        "header_image": "https://cdn.cloudflare.steamstatic.com/steam/apps/367520/header.jpg",
-        "total_achievements": 63,
-        "unlocked_count": 55,
-        "completion_percentage": 87.3,
+        "header_image": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/367520/3c3489495136b26b34f8a9543c7f5645b99d388c/header.jpg",
+        "total_achievements": 4,
+        "unlocked_count": 4,
+        "completion_percentage": 100.0,
         "achievements": [
             {
-                "id": "ACH_PANTHEO_5",
+                "id": "ACH_CHARMED",
+                "name": "Charmed",
+                "description": "Acquire your first Charm in Hallownest.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/367520/6d15e62c48ba57d23e72b8f24fb775a44223cb8f.jpg",
+                "unlocked": True,
+                "unlock_time": 1700000000,
+                "global_percentage": 76.7,
+                "rarity_tier": "common",
+                "hidden": False,
+            },
+            {
+                "id": "ACH_PROTECTED",
+                "name": "Protected",
+                "description": "Acquire 4 Mask Shards to increase health.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/367520/2461c5d7f6595602443a0bf0da24f48795873671.jpg",
+                "unlocked": True,
+                "unlock_time": 1700100000,
+                "global_percentage": 47.7,
+                "rarity_tier": "common",
+                "hidden": False,
+            },
+            {
+                "id": "ACH_HOLLOW_KNIGHT",
+                "name": "The Hollow Knight",
+                "description": "Defeat the Hollow Knight and complete the journey.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/367520/39db59cf079011e52d49a621de9c540652f9d2d4.jpg",
+                "unlocked": True,
+                "unlock_time": 1700200000,
+                "global_percentage": 26.4,
+                "rarity_tier": "common",
+                "hidden": False,
+            },
+            {
+                "id": "ACH_PANTHEON_5",
                 "name": "Embrace the Void",
-                "description": "Conquer the Pantheon of Hallownest.",
-                "icon": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/367520/524317f2bc29285098939c3e9cb19cfba98031d8.jpg",
-                "unlocked": False,
-                "unlock_time": None,
+                "description": "Conquer the Pantheon of Hallownest and ascend.",
+                "icon": "https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/367520/671c16432f460cdd9eff88d5c01b4abc7cfe2703.jpg",
+                "unlocked": True,
+                "unlock_time": 1700300000,
                 "global_percentage": 2.9,
                 "rarity_tier": "ultra_rare",
-                "category": "Up Next",
                 "hidden": False,
-                "progress": {"current": 4, "max": 5},
-                "estimated_minutes": 60,
-                "hint": "Practice Absolute Radiance in Godhome."
-            }
-        ]
-    }
+            },
+        ],
+    },
 ]
 
 
-def get_mock_games():
+def get_mock_games() -> list[GameData]:
     return MOCK_GAMES
 
 
-def get_mock_game_by_id(appid):
+def get_mock_game_by_id(appid: int) -> GameData:
     for game in MOCK_GAMES:
         if game["appid"] == int(appid):
             return game
-    return MOCK_GAMES[0]
+    return {
+        "appid": int(appid),
+        "name": "Untracked Indie Prototype" if int(appid) == 999999 else f"App {appid}",
+        "header_image": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/340/header.jpg",
+        "total_achievements": 0,
+        "unlocked_count": 0,
+        "completion_percentage": 0.0,
+        "achievements": [],
+    }

@@ -18,12 +18,12 @@ interface CategoryFilterProps {
 }
 
 const CATEGORIES: { id: CategoryFilterType; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: 'all', label: 'All', icon: List },
   { id: 'up_next', label: 'Up Next', icon: Sparkles },
-  { id: 'almost_there', label: 'Almost There', icon: Clock },
   { id: 'easy_grabs', label: 'Easy Grabs', icon: Zap },
+  { id: 'almost_there', label: 'Almost There', icon: Clock },
   { id: 'pinned', label: 'Pinned', icon: Pin },
-  { id: 'missable', label: 'Missable', icon: EyeOff },
+  { id: 'all', label: 'All', icon: List },
+  { id: 'missable', label: 'Secret / Rare', icon: EyeOff },
   { id: 'unlocked', label: 'Unlocked', icon: CheckCircle2 },
 ];
 
@@ -45,10 +45,11 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             focusable={true}
             onActivate={() => onSelectCategory(cat.id)}
             onClick={() => onSelectCategory(cat.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all duration-150 border flex-shrink-0 cursor-pointer focus:ring-2 focus:ring-[var(--focus-ring)] focus:scale-[1.02] focus:outline-none ${
+            data-testid={`category-tab-${cat.id}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all duration-150 border flex-shrink-0 cursor-pointer focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
               isActive
-                ? 'bg-[var(--accent-primary)] text-white border-[var(--accent-primary)] shadow-sm'
-                : 'bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-card)] border-[var(--border-color)]'
+                ? 'bg-[#389fff] text-white border-[#389fff] shadow-sm'
+                : 'bg-[#161f2c] text-slate-300 hover:text-white hover:bg-[#1e293b] border-[#2e3d52]'
             }`}
           >
             <Icon className="w-3.5 h-3.5 flex-shrink-0" />
@@ -56,8 +57,8 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             <span
               className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
                 isActive
-                  ? 'bg-white/25 text-white'
-                  : 'bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-color)]'
+                  ? 'bg-black/25 text-white'
+                  : 'bg-[#0e141b] text-slate-400 border border-[#2e3d52]'
               }`}
             >
               {count}

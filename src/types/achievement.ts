@@ -1,20 +1,15 @@
 export type RarityTier = 'common' | 'rare' | 'ultra_rare';
 
-export type CategoryFilterType = 
-  | 'all' 
-  | 'up_next' 
-  | 'almost_there' 
-  | 'easy_grabs' 
-  | 'missable' 
-  | 'pinned' 
+export type CategoryFilterType =
+  | 'all'
+  | 'up_next'
+  | 'easy_grabs'
+  | 'almost_there'
+  | 'pinned'
+  | 'missable'
   | 'unlocked';
 
-export type ColorThemeId = 
-  | 'steam_slate'    // Official SteamOS Dark Slate (Default - Matte, native, clean)
-  | 'aether_gold'     // Matte Trophy Gold & Charcoal
-  | 'obsidian_matte'  // Stealth Matte Black
-  | 'emerald_tactical'// Tactical Matte Mint/Teal
-  | 'nordic_frost';   // Ice Slate & Cobalt
+export type ColorThemeId = 'steam_slate';
 
 export interface ProgressInfo {
   current: number;
@@ -53,6 +48,7 @@ export interface Game {
   appid: number;
   name: string;
   header_image: string;
+  last_played?: number;
   total_achievements: number;
   unlocked_count: number;
   completion_percentage: number;

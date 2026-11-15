@@ -3,6 +3,13 @@ import { MockSteamClientService } from './mockSteamClient';
 
 declare const process: any;
 
+const STORAGE_KEYS = {
+  GAMES_LIST: 'next_unlock_games_list_v2',
+  PINS: 'next_unlock_pins_v2',
+  LAST_APPID: 'next_unlock_last_appid_v2',
+  GAME_PREFIX: 'next_unlock_cache_v2_',
+};
+
 export function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
   return Promise.race([
     promise,
@@ -10,8 +17,8 @@ export function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback:
   ]);
 }
 
-// Lazy-loaded call function from @decky/api
 let _callFn: ((...args: any[]) => Promise<any>) | null = null;
+let _pinsHydratedFromBackend = false;
 
 async function getCallFn() {
   if (_callFn) return _callFn;
@@ -24,14 +31,22 @@ async function getCallFn() {
   }
 }
 
-// Allow tests to inject a mock call function
 export function __setCallFn(fn: ((...args: any[]) => Promise<any>) | null) {
   _callFn = fn;
+  _pinsHydratedFromBackend = false;
 }
 
-// Cached active app and games list to avoid flashing and slow loading
 let _lastActiveApp: { appid: number; name: string } | null = null;
 let _cachedGames: { data: Game[]; timestamp: number } | null = null;
+let _lastSelectedAppId: number | 'all' | null = null;
+
+function getStorageSafe(): Storage | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
+    if (typeof localStorage !== 'undefined') return localStorage;
+  } catch {}
+  return null;
+}
 
 export function getActiveApp(): { appid: number; name: string } | null {
   if (typeof window === 'undefined') return _lastActiveApp;
@@ -57,8 +72,8 @@ export async function getActiveAppAsync(): Promise<{ appid: number; name: string
   try {
     const callFn = await getCallFn();
     if (callFn) {
-      const res = await withTimeout(callFn('get_active_app'), 2500, null);
-      const data = res && res.result ? res.result : res;
+      const res = await withTimeout(callFn('get_active_app'), 2000, null);
+      const data = res && res.result !== undefined ? res.result : res;
       if (data && data.appid) {
         _lastActiveApp = {
           appid: Number(data.appid),
@@ -66,16 +81,116 @@ export async function getActiveAppAsync(): Promise<{ appid: number; name: string
         };
         return _lastActiveApp;
       }
+      if (data === null) {
+        _lastActiveApp = null;
+        return null;
+      }
     }
   } catch {}
   return _lastActiveApp;
 }
 
 export function getGameHeaderUrl(appid: number, providedUrl?: string): string {
-  if (providedUrl && !providedUrl.endsWith('/header.jpg')) {
+  if (providedUrl && providedUrl.trim().length > 0) {
     return providedUrl;
   }
-  return `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`;
+  return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`;
+}
+
+/**
+ * Canonical progress ratio calculation (Spec 03).
+ */
+export function getProgressRatio(ach: Partial<Achievement>): number {
+  if (ach.progress && ach.progress.max > 1 && ach.progress.current > 0) {
+    return Math.min(1.0, Math.max(0.0, ach.progress.current / ach.progress.max));
+  }
+  return 0.0;
+}
+
+/**
+ * Canonical recommendation score formula (Spec 03 - matches backend/recommendation.py):
+ *   rec_score = round((ratio * 60.0) + (global_pct * 0.8) + visibility_bonus, 1)
+ * Higher score = closer to completion and easier/more common to unlock next.
+ */
+export function computeRecommendationScore(ach: Partial<Achievement>): number {
+  if (ach.unlocked) return 0.0;
+
+  const ratio = getProgressRatio(ach);
+  const rawPct = typeof ach.global_percentage === 'number' ? ach.global_percentage : Number(ach.global_percentage) || 0;
+  const globalPct = Math.min(100.0, Math.max(0.0, rawPct));
+  const isHidden = Boolean(ach.hidden);
+  const hasDesc = Boolean(ach.description && ach.description.trim().length > 0);
+  const visibilityBonus = !isHidden && hasDesc ? 15.0 : 0.0;
+
+  const score = ratio * 60.0 + globalPct * 0.8 + visibilityBonus;
+  return Math.round(score * 10) / 10;
+}
+
+/**
+ * Canonical achievement ranking into categories (Spec 03 - matches backend/recommendation.py).
+ */
+export function rankAchievements(achievements: Achievement[], pinnedSet: Set<string>): RankedAchievements {
+  const pinned: Achievement[] = [];
+  const almost_there: Achievement[] = [];
+  const easy_grabs: Achievement[] = [];
+  const missable: Achievement[] = [];
+  const locked: Achievement[] = [];
+  const unlocked: Achievement[] = [];
+
+  achievements.forEach((rawAch) => {
+    const ach: Achievement = { ...rawAch };
+    const isPinned = pinnedSet.has(ach.id);
+    ach.is_pinned = isPinned;
+
+    if (ach.unlocked) {
+      ach.rec_score = 0.0;
+      unlocked.push(ach);
+      return;
+    }
+
+    const score = computeRecommendationScore(ach);
+    ach.rec_score = score;
+    const ratio = getProgressRatio(ach);
+    const globalPct = ach.global_percentage || 0;
+
+    locked.push(ach);
+    if (isPinned) pinned.push(ach);
+    if (ratio >= 0.5) almost_there.push(ach);
+    if (globalPct >= 25.0 && (!ach.hidden || ratio > 0)) easy_grabs.push(ach);
+    if (ach.hidden || ach.category === 'Missable' || globalPct <= 10.0) {
+      missable.push(ach);
+    }
+  });
+
+  const lockedSort = (a: Achievement, b: Achievement) => {
+    const scoreDiff = (b.rec_score || 0) - (a.rec_score || 0);
+    if (scoreDiff !== 0) return scoreDiff;
+    const pctDiff = (b.global_percentage || 0) - (a.global_percentage || 0);
+    if (pctDiff !== 0) return pctDiff;
+    return (a.name || '').localeCompare(b.name || '');
+  };
+
+  locked.sort(lockedSort);
+  pinned.sort(lockedSort);
+  almost_there.sort((a, b) => getProgressRatio(b) - getProgressRatio(a) || lockedSort(a, b));
+  easy_grabs.sort((a, b) => (b.global_percentage || 0) - (a.global_percentage || 0) || (a.name || '').localeCompare(b.name || ''));
+  missable.sort(lockedSort);
+  unlocked.sort((a, b) => (b.unlock_time || 0) - (a.unlock_time || 0) || (a.global_percentage || 0) - (b.global_percentage || 0));
+
+  const actionableLocked = locked.filter(
+    (a) => !a.hidden || getProgressRatio(a) > 0
+  );
+  const upNextSource = actionableLocked.length > 0 ? actionableLocked : locked;
+
+  return {
+    pinned,
+    up_next: upNextSource.slice(0, 5),
+    almost_there,
+    easy_grabs,
+    missable,
+    locked,
+    unlocked,
+  };
 }
 
 function formatSteamAchievement(ach: any, appid: number): Achievement {
@@ -93,7 +208,7 @@ function formatSteamAchievement(ach: any, appid: number): Achievement {
   }
 
   let progress: ProgressInfo | undefined = undefined;
-  if (ach.flMaxProgress && ach.flMaxProgress > 0) {
+  if (ach.flMaxProgress && ach.flMaxProgress > 1) {
     progress = {
       current: ach.flCurrentProgress || 0,
       max: ach.flMaxProgress,
@@ -103,8 +218,8 @@ function formatSteamAchievement(ach: any, appid: number): Achievement {
   const name = ach.strName || ach.name || 'Achievement';
   const desc = ach.strDescription || ach.description || '';
 
-  return {
-    id: ach.strID || ach.id || `ach_${Math.random()}`,
+  const formatted: Achievement = {
+    id: ach.strID || ach.id || `ach_${name.toLowerCase().replace(/[^a-z0-9_]+/g, '_')}`,
     name,
     description: desc,
     icon: iconUrl,
@@ -114,64 +229,156 @@ function formatSteamAchievement(ach: any, appid: number): Achievement {
     rarity_tier: rarity,
     hidden: !!ach.bHidden,
     progress,
-    hint: desc || (pct > 0 ? `Unlocked by ${pct}% of players` : ''),
-    rec_score: (100 - pct) + (isUnlocked ? 0 : 50),
   };
-}
-
-function rankAchievementsLocally(achievements: Achievement[], pinnedSet: Set<string>): RankedAchievements {
-  const pinned: Achievement[] = [];
-  const up_next: Achievement[] = [];
-  const almost_there: Achievement[] = [];
-  const easy_grabs: Achievement[] = [];
-  const missable: Achievement[] = [];
-  const locked: Achievement[] = [];
-  const unlocked: Achievement[] = [];
-
-  achievements.forEach((ach) => {
-    const isPinned = pinnedSet.has(ach.id);
-    ach.is_pinned = isPinned;
-
-    if (ach.unlocked) {
-      unlocked.push(ach);
-      return;
-    }
-
-    locked.push(ach);
-    if (isPinned) pinned.push(ach);
-
-    const ratio = ach.progress && ach.progress.max > 0 ? ach.progress.current / ach.progress.max : 0;
-    if (ratio >= 0.75) almost_there.push(ach);
-    if (ach.global_percentage >= 30 || (ach.estimated_minutes && ach.estimated_minutes <= 15)) {
-      easy_grabs.push(ach);
-    }
-    if (ach.hidden || ach.category === 'Missable') missable.push(ach);
-  });
-
-  const sortedLocked = [...locked].sort((a, b) => (b.rec_score || 0) - (a.rec_score || 0));
-
-  return {
-    pinned,
-    up_next: sortedLocked.slice(0, 5),
-    almost_there,
-    easy_grabs,
-    missable,
-    locked,
-    unlocked,
-  };
-}
-
-function getStorageSafe(): Storage | null {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
-    if (typeof localStorage !== 'undefined') return localStorage;
-  } catch {}
-  return null;
+  formatted.rec_score = computeRecommendationScore(formatted);
+  return formatted;
 }
 
 export class SteamApiService {
   private static pinnedIds = new Set<string>();
   private static detailsCache = new Map<number, { game: Game; ranked: RankedAchievements; ts: number }>();
+
+  private static loadPinsFromStorage() {
+    const storage = getStorageSafe();
+    if (!storage) return;
+    try {
+      const raw = storage.getItem(STORAGE_KEYS.PINS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((id) => {
+            if (typeof id === 'string') this.pinnedIds.add(id);
+          });
+        }
+      }
+    } catch {}
+  }
+
+  private static savePinsToStorage() {
+    const storage = getStorageSafe();
+    if (!storage) return;
+    try {
+      storage.setItem(STORAGE_KEYS.PINS, JSON.stringify(Array.from(this.pinnedIds)));
+    } catch {}
+  }
+
+  private static async ensurePinsHydrated() {
+    this.loadPinsFromStorage();
+    if (_pinsHydratedFromBackend) return;
+    try {
+      const callFn = await getCallFn();
+      if (callFn) {
+        const res = await withTimeout(callFn('get_pinned'), 1500, null);
+        const data = res && res.result !== undefined ? res.result : res;
+        if (Array.isArray(data)) {
+          data.forEach((id: any) => {
+            if (typeof id === 'string') this.pinnedIds.add(id);
+          });
+          this.savePinsToStorage();
+          _pinsHydratedFromBackend = true;
+          return;
+        }
+      }
+    } catch {}
+
+    const isTestOrHarness =
+      (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+      (typeof window !== 'undefined' && (window as any).__NEXT_UNLOCK_TEST_HARNESS__);
+    if (isTestOrHarness) {
+      MockSteamClientService.getPinned().forEach((id) => this.pinnedIds.add(id));
+      this.savePinsToStorage();
+      _pinsHydratedFromBackend = true;
+    }
+  }
+
+  /**
+   * Synchronous access to last selected AppID so UI restores user's selection immediately on mount.
+   */
+  static getLastSelectedAppId(): number | 'all' | null {
+    if (_lastSelectedAppId !== null) return _lastSelectedAppId;
+    const storage = getStorageSafe();
+    if (storage) {
+      try {
+        const raw = storage.getItem(STORAGE_KEYS.LAST_APPID);
+        if (raw === 'all') {
+          _lastSelectedAppId = 'all';
+          return 'all';
+        }
+        if (raw) {
+          const num = parseInt(raw, 10);
+          if (!isNaN(num) && num > 0) {
+            _lastSelectedAppId = num;
+            return num;
+          }
+        }
+      } catch {}
+    }
+    return null;
+  }
+
+  static setLastSelectedAppId(appid: number | 'all') {
+    _lastSelectedAppId = appid;
+    const storage = getStorageSafe();
+    if (storage) {
+      try {
+        storage.setItem(STORAGE_KEYS.LAST_APPID, String(appid));
+      } catch {}
+    }
+  }
+
+  /**
+   * Synchronous access to cached games list for 0ms mount without spinner flash.
+   */
+  static getCachedGamesSync(): Game[] {
+    if (_cachedGames && _cachedGames.data.length > 0) {
+      return _cachedGames.data;
+    }
+    const storage = getStorageSafe();
+    if (storage) {
+      try {
+        const raw = storage.getItem(STORAGE_KEYS.GAMES_LIST);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            _cachedGames = { data: parsed, timestamp: Date.now() - 15000 };
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return [];
+  }
+
+  /**
+   * Synchronous access to cached game details for 0ms mount without spinner flash.
+   */
+  static getCachedGameDetailsSync(appid: number): { game: Game; ranked: RankedAchievements } | null {
+    this.loadPinsFromStorage();
+    if (this.detailsCache.has(appid)) {
+      const cached = this.detailsCache.get(appid)!;
+      return { game: cached.game, ranked: cached.ranked };
+    }
+    const storage = getStorageSafe();
+    if (storage) {
+      try {
+        const item = storage.getItem(`${STORAGE_KEYS.GAME_PREFIX}${appid}`);
+        if (item) {
+          const parsed = JSON.parse(item);
+          if (parsed && parsed.game && parsed.ranked) {
+            const ranked = rankAchievements(parsed.game.achievements || [], this.pinnedIds);
+            const entry = {
+              game: { ...parsed.game, achievements: [...ranked.locked, ...ranked.unlocked] },
+              ranked,
+              ts: parsed.ts || Date.now(),
+            };
+            this.detailsCache.set(appid, entry);
+            return { game: entry.game, ranked: entry.ranked };
+          }
+        }
+      } catch {}
+    }
+    return null;
+  }
 
   static async getGames(forceRefresh = false): Promise<Game[]> {
     const now = Date.now();
@@ -179,17 +386,24 @@ export class SteamApiService {
       return _cachedGames.data;
     }
 
+    await this.ensurePinsHydrated();
+
     try {
       const callFn = await getCallFn();
       if (callFn) {
-        const res = await withTimeout(callFn('get_games'), 3000, null);
-        const data = res && res.result ? res.result : res;
+        const res = await withTimeout(
+          forceRefresh ? callFn('get_games', true) : callFn('get_games'),
+          3500,
+          null
+        );
+        const data = res && res.result !== undefined ? res.result : res;
         if (Array.isArray(data) && data.length > 0) {
           const active = await getActiveAppAsync();
+          const merged = [...data];
           if (active) {
-            const exists = data.find((g: any) => g.appid === active.appid);
+            const exists = merged.find((g: any) => g.appid === active.appid);
             if (!exists) {
-              data.unshift({
+              merged.unshift({
                 appid: active.appid,
                 name: active.name,
                 header_image: getGameHeaderUrl(active.appid),
@@ -200,8 +414,22 @@ export class SteamApiService {
               });
             }
           }
-          _cachedGames = { data, timestamp: now };
-          return data;
+          // Enrich any game whose details are already in memory cache
+          const enriched = merged.map((g: Game) => {
+            const cachedDetail = this.detailsCache.get(g.appid);
+            if (cachedDetail && cachedDetail.game.total_achievements > 0) {
+              return {
+                ...g,
+                total_achievements: cachedDetail.game.total_achievements,
+                unlocked_count: cachedDetail.game.unlocked_count,
+                completion_percentage: cachedDetail.game.completion_percentage,
+                achievements: cachedDetail.game.achievements,
+              };
+            }
+            return g;
+          });
+          this.saveGamesCache(enriched, now);
+          return enriched;
         }
       }
     } catch (e) {
@@ -210,7 +438,7 @@ export class SteamApiService {
 
     const active = await getActiveAppAsync();
     if (active) {
-      const single = [
+      const single: Game[] = [
         {
           appid: active.appid,
           name: active.name,
@@ -221,124 +449,247 @@ export class SteamApiService {
           achievements: [],
         },
       ];
-      _cachedGames = { data: single, timestamp: now };
+      this.saveGamesCache(single, now);
       return single;
     }
 
-    // In unit test environment, fallback to MockSteamClientService so vitest passes
-    if (process.env.NODE_ENV === 'test') {
-      return MockSteamClientService.getGames();
+    const isTestOrHarness =
+      (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+      (typeof window !== 'undefined' && (window as any).__NEXT_UNLOCK_TEST_HARNESS__);
+
+    if (isTestOrHarness) {
+      const mockList = await MockSteamClientService.getGames();
+      this.saveGamesCache(mockList, now);
+      return mockList;
+    }
+
+    const previouslyCached = this.getCachedGamesSync();
+    if (previouslyCached.length > 0) {
+      return previouslyCached;
     }
 
     return [];
   }
 
-  static async getGameDetails(appid: number, forceRefresh = false): Promise<{ game: Game; ranked: RankedAchievements }> {
-    const now = Date.now();
+  private static saveGamesCache(data: Game[], timestamp: number) {
+    _cachedGames = { data, timestamp };
+    const storage = getStorageSafe();
+    if (storage) {
+      try {
+        storage.setItem(STORAGE_KEYS.GAMES_LIST, JSON.stringify(data));
+      } catch {}
+    }
+  }
 
-    // 1. Check in-memory cache first (0ms instantaneous return)
+  static async getGameDetails(
+    appid: number,
+    forceRefresh = false
+  ): Promise<{ game: Game; ranked: RankedAchievements }> {
+    const now = Date.now();
+    await this.ensurePinsHydrated();
+
+    // 1. Check in-memory cache first when not force-refreshing
     if (!forceRefresh && this.detailsCache.has(appid)) {
       const cached = this.detailsCache.get(appid)!;
-      // Stale-while-revalidate: if older than 45s, refresh in background
       if (now - cached.ts > 45000) {
-        this.fetchAndCacheGameDetails(appid).catch(() => {});
+        this.fetchAndCacheGameDetails(appid, false).catch(() => {});
       }
       return { game: cached.game, ranked: cached.ranked };
     }
 
-    // 2. Check localStorage cache for instant display across plugin mounts
-    const storage = getStorageSafe();
-    if (!forceRefresh && storage) {
-      try {
-        const item = storage.getItem(`next_unlock_cache_${appid}`);
-        if (item) {
-          const parsed = JSON.parse(item);
-          if (parsed && parsed.game && parsed.ranked) {
-            this.detailsCache.set(appid, { ...parsed, ts: parsed.ts || now });
-            // Revalidate in background
-            this.fetchAndCacheGameDetails(appid).catch(() => {});
-            return { game: parsed.game, ranked: parsed.ranked };
-          }
-        }
-      } catch {}
+    // 2. Check localStorage cache when not force-refreshing
+    if (!forceRefresh) {
+      const syncCached = this.getCachedGameDetailsSync(appid);
+      if (syncCached) {
+        this.fetchAndCacheGameDetails(appid, false).catch(() => {});
+        return syncCached;
+      }
     }
 
-    return this.fetchAndCacheGameDetails(appid);
+    return this.fetchAndCacheGameDetails(appid, forceRefresh);
   }
 
-  private static async fetchAndCacheGameDetails(appid: number): Promise<{ game: Game; ranked: RankedAchievements }> {
-    const now = Date.now();
-    let nativeAchievements: any[] | null = null;
-    const userUnlockMap: Record<string, boolean> = {};
-
-    // 1. Query native SteamClient.Apps directly (SteamOS authenticated client, exact unlock status)
-    if (typeof window !== 'undefined') {
-      const w = window as any;
-      if (typeof w.SteamClient?.Apps?.GetMyAchievementsForApp === 'function') {
+  /**
+   * Loads details for all games in the list (used by "All Games Overview" mode)
+   * so cross-library filtering works across the user's installed games.
+   */
+  static async getAllGamesDetails(games: Game[], forceRefresh = false): Promise<Game[]> {
+    const results = await Promise.all(
+      games.slice(0, 12).map(async (g) => {
         try {
-          const res = await withTimeout(
+          const det = await this.getGameDetails(g.appid, forceRefresh);
+          return det.game;
+        } catch {
+          return g;
+        }
+      })
+    );
+    const byId = new Map(results.map((g) => [g.appid, g]));
+    return games.map((g) => byId.get(g.appid) || g);
+  }
+
+  private static async queryNativeSteamClient(
+    appid: number
+  ): Promise<{
+    nativeAchievements: any[] | null;
+    userUnlockMap: Record<string, { unlocked: boolean; unlock_time?: number | null; progress?: ProgressInfo }>;
+  }> {
+    let nativeAchievements: any[] | null = null;
+    const userUnlockMap: Record<
+      string,
+      { unlocked: boolean; unlock_time?: number | null; progress?: ProgressInfo }
+    > = {};
+
+    if (typeof window === 'undefined') {
+      return { nativeAchievements, userUnlockMap };
+    }
+
+    const w = window as any;
+    const ingestList = (rawList: any[]) => {
+      if (!Array.isArray(rawList) || rawList.length === 0) return;
+      if (!nativeAchievements) nativeAchievements = [];
+      rawList.forEach((a: any) => {
+        if (!a || typeof a !== 'object') return;
+        nativeAchievements!.push(a);
+        const isAchieved = !!(a.bAchieved || a.unlocked);
+        const progress: ProgressInfo | undefined =
+          a.flMaxProgress && a.flMaxProgress > 1
+            ? { current: a.flCurrentProgress || 0, max: a.flMaxProgress }
+            : undefined;
+        const entry = {
+          unlocked: isAchieved,
+          unlock_time: a.rtUnlocked || a.unlock_time || null,
+          progress,
+        };
+        if (a.strID) userUnlockMap[a.strID] = entry;
+        if (a.id) userUnlockMap[a.id] = entry;
+        if (a.strName) {
+          const norm = `ach_${a.strName.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '')}`;
+          userUnlockMap[norm] = entry;
+        }
+      });
+    };
+
+    // 1a. Check SteamOS Gaming Mode in-memory appDetailsStore (instantaneous, works without running game)
+    try {
+      const storeAch =
+        w.appDetailsStore?.GetAchievements?.(appid) ||
+        w.appDetailsStore?.GetAppDetails?.(appid)?.achievements;
+      if (storeAch) {
+        const inner = storeAch.data || storeAch;
+        if (Array.isArray(inner.rgAchievements)) ingestList(inner.rgAchievements);
+        if (Array.isArray(inner.vecHighlight)) {
+          ingestList(inner.vecHighlight.map((x: any) => ({ ...x, bAchieved: true })));
+        }
+        if (Array.isArray(inner.vecAchievedHidden)) {
+          ingestList(inner.vecAchievedHidden.map((x: any) => ({ ...x, bAchieved: true })));
+        }
+        if (Array.isArray(inner.vecUnachieved)) {
+          ingestList(inner.vecUnachieved.map((x: any) => ({ ...x, bAchieved: false })));
+        }
+      }
+    } catch {}
+
+    // 1b. Query SteamClient.Apps.GetMyAchievementsForApp (try numeric appid then string appid)
+    if (typeof w.SteamClient?.Apps?.GetMyAchievementsForApp === 'function') {
+      try {
+        let res = await withTimeout(
+          Promise.resolve(w.SteamClient.Apps.GetMyAchievementsForApp(appid)),
+          1800,
+          null
+        );
+        let rawList = res?.data?.rgAchievements || res?.rgAchievements;
+        if (!Array.isArray(rawList) || rawList.length === 0) {
+          res = await withTimeout(
             Promise.resolve(w.SteamClient.Apps.GetMyAchievementsForApp(String(appid))),
-            2500,
+            1800,
             null
           );
-          const rawList = res?.data?.rgAchievements || res?.rgAchievements;
-          if (Array.isArray(rawList) && rawList.length > 0) {
-            nativeAchievements = rawList;
-            rawList.forEach((a: any) => {
-              const isAchieved = !!a.bAchieved;
-              if (a.strID) userUnlockMap[a.strID] = isAchieved;
-              if (a.id) userUnlockMap[a.id] = isAchieved;
-              if (a.strName) {
-                const norm = `ach_${a.strName.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
-                userUnlockMap[norm] = isAchieved;
-              }
-            });
+          rawList = res?.data?.rgAchievements || res?.rgAchievements;
+        }
+        if (Array.isArray(rawList) && rawList.length > 0) {
+          ingestList(rawList);
+        }
+      } catch (clientErr) {
+        console.warn('[Next Unlock] SteamClient.Apps.GetMyAchievementsForApp error:', clientErr);
+      }
+    }
+
+    return { nativeAchievements, userUnlockMap };
+  }
+
+  private static async fetchAndCacheGameDetails(
+    appid: number,
+    forceRefresh = false
+  ): Promise<{ game: Game; ranked: RankedAchievements }> {
+    const now = Date.now();
+    const callFn = await getCallFn();
+
+    // Run native SteamClient/appDetailsStore query and Decky RPC backend query IN PARALLEL
+    const [nativeRes, backendDetails] = await Promise.all([
+      this.queryNativeSteamClient(appid),
+      (async (): Promise<{ game: Game; ranked: RankedAchievements } | null> => {
+        if (!callFn) return null;
+        try {
+          const res = await withTimeout(
+            forceRefresh ? callFn('get_game_details', appid, true) : callFn('get_game_details', appid),
+            5000,
+            null
+          );
+          const data = res && res.result !== undefined ? res.result : res;
+          if (data && data.game) {
+            return data;
           }
-        } catch (clientErr) {
-          console.warn('[Next Unlock] SteamClient.Apps.GetMyAchievementsForApp error:', clientErr);
+        } catch (e) {
+          console.warn('[Next Unlock] RPC get_game_details error:', e);
         }
-      }
-    }
+        return null;
+      })(),
+    ]);
 
-    // 2. Query Decky RPC backend (for rich descriptions, hint metadata, and bundled caches)
-    let backendDetails: { game: Game; ranked: RankedAchievements } | null = null;
-    try {
-      const callFn = await getCallFn();
-      if (callFn) {
-        const res = await withTimeout(callFn('get_game_details', appid), 5000, null);
-        const data = res && res.result ? res.result : res;
-        if (data && data.game && data.game.total_achievements > 0) {
-          backendDetails = data;
-        }
-      }
-    } catch (e) {
-      console.warn('[Next Unlock] RPC get_game_details error:', e);
-    }
+    const { nativeAchievements, userUnlockMap } = nativeRes;
 
-    // 3. Merge live native user unlock state with backend / cache data
-    if (backendDetails && backendDetails.game) {
+    // 3. Merge live native user unlock state with backend data
+    if (backendDetails && backendDetails.game && backendDetails.game.achievements.length > 0) {
+      const unlockedIdsToSync: string[] = [];
       const achievements: Achievement[] = backendDetails.game.achievements.map((a) => {
-        // If native SteamOS authenticated client knows the unlock state, override it!
         let isUnlocked = a.unlocked;
-        if (userUnlockMap[a.id] !== undefined) {
-          isUnlocked = userUnlockMap[a.id];
-        } else if (a.name) {
-          const norm = `ach_${a.name.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
-          if (userUnlockMap[norm] !== undefined) {
-            isUnlocked = userUnlockMap[norm];
-          }
+        let unlockTime = a.unlock_time;
+        let progress = a.progress;
+
+        const norm = a.name
+          ? `ach_${a.name.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '')}`
+          : '';
+        const match = userUnlockMap[a.id] || (norm ? userUnlockMap[norm] : undefined);
+
+        if (match !== undefined) {
+          isUnlocked = match.unlocked;
+          if (match.unlock_time) unlockTime = match.unlock_time;
+          if (match.progress) progress = match.progress;
         }
-        return {
+
+        if (isUnlocked) unlockedIdsToSync.push(a.id);
+
+        const merged: Achievement = {
           ...a,
           unlocked: isUnlocked,
-          rec_score: (100 - a.global_percentage) + (isUnlocked ? 0 : 50),
+          unlock_time: unlockTime,
+          progress,
         };
+        merged.rec_score = computeRecommendationScore(merged);
+        return merged;
       });
 
-      const total = achievements.length;
-      const unlockedCount = achievements.filter((a) => a.unlocked).length;
+      // Persist discovered native unlocks to backend so they are remembered when game is closed
+      if (nativeAchievements && callFn && unlockedIdsToSync.length > 0) {
+        callFn('sync_unlocked_achievements', appid, unlockedIdsToSync).catch(() => {});
+      }
+
+      const ranked = rankAchievements(achievements, this.pinnedIds);
+      const allSorted = [...ranked.locked, ...ranked.unlocked];
+      const total = allSorted.length;
+      const unlockedCount = ranked.unlocked.length;
       const pct = total > 0 ? Math.round((unlockedCount / total) * 1000) / 10 : 0;
-      const ranked = rankAchievementsLocally(achievements, this.pinnedIds);
 
       const mergedGame: Game = {
         ...backendDetails.game,
@@ -346,7 +697,7 @@ export class SteamApiService {
         total_achievements: total,
         unlocked_count: unlockedCount,
         completion_percentage: pct,
-        achievements,
+        achievements: allSorted,
       };
 
       const result = { game: mergedGame, ranked };
@@ -357,11 +708,14 @@ export class SteamApiService {
     // 4. If only native SteamClient was available, build directly from it
     if (nativeAchievements && nativeAchievements.length > 0) {
       const achievements = nativeAchievements.map((a: any) => formatSteamAchievement(a, appid));
-      const total = achievements.length;
-      const unlockedCount = achievements.filter((a) => a.unlocked).length;
+      const ranked = rankAchievements(achievements, this.pinnedIds);
+      const allSorted = [...ranked.locked, ...ranked.unlocked];
+      const total = allSorted.length;
+      const unlockedCount = ranked.unlocked.length;
       const pct = total > 0 ? Math.round((unlockedCount / total) * 1000) / 10 : 0;
       const active = await getActiveAppAsync();
-      const gameName = (active && active.appid === appid) ? active.name : `App ${appid}`;
+      const knownGame = _cachedGames?.data.find((g) => g.appid === appid);
+      const gameName = knownGame?.name || (active && active.appid === appid ? active.name : `App ${appid}`);
 
       const game: Game = {
         appid,
@@ -370,35 +724,48 @@ export class SteamApiService {
         total_achievements: total,
         unlocked_count: unlockedCount,
         completion_percentage: pct,
-        achievements,
+        achievements: allSorted,
       };
 
-      const ranked = rankAchievementsLocally(achievements, this.pinnedIds);
       const result = { game, ranked };
       this.cacheResult(appid, result, now);
       return result;
     }
 
-    // 5. In test environment or test harness, fallback to MockSteamClientService
+    // 5. In test environment or test harness, fallback to MockSteamClientService if backend returned nothing
     const isTestMode =
-      process.env.NODE_ENV === 'test' ||
+      (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
       (typeof window !== 'undefined' && (window as any).__NEXT_UNLOCK_TEST_HARNESS__);
 
-    if (isTestMode) {
+    if (isTestMode && !backendDetails) {
       const mockDetails = await MockSteamClientService.getGameDetails(appid);
-      if (mockDetails && mockDetails.game && mockDetails.game.total_achievements > 0) {
-        return mockDetails;
+      if (mockDetails && mockDetails.game) {
+        const ranked = rankAchievements(mockDetails.game.achievements, this.pinnedIds);
+        const result = {
+          game: {
+            ...mockDetails.game,
+            achievements: [...ranked.locked, ...ranked.unlocked],
+          },
+          ranked,
+        };
+        this.cacheResult(appid, result, now);
+        return result;
       }
     }
 
-    // 6. Clean empty fallback state for unsupported or empty app
+    // 6. Clean empty state for a game with 0 achievements (still returns the game metadata!)
     const active = await getActiveAppAsync();
-    const gameName = (active && active.appid === appid) ? active.name : `App ${appid}`;
-    const emptyResult = {
+    const knownGame = _cachedGames?.data.find((g) => g.appid === appid);
+    const gameName =
+      backendDetails?.game?.name ||
+      knownGame?.name ||
+      (active && active.appid === appid ? active.name : `App ${appid}`);
+
+    const emptyResult: { game: Game; ranked: RankedAchievements } = {
       game: {
         appid,
         name: gameName,
-        header_image: getGameHeaderUrl(appid),
+        header_image: getGameHeaderUrl(appid, backendDetails?.game?.header_image),
         total_achievements: 0,
         unlocked_count: 0,
         completion_percentage: 0,
@@ -414,17 +781,58 @@ export class SteamApiService {
         unlocked: [],
       },
     };
+    this.cacheResult(appid, emptyResult, now);
     return emptyResult;
   }
 
-
   private static cacheResult(appid: number, result: { game: Game; ranked: RankedAchievements }, ts: number) {
-    this.detailsCache.set(appid, { ...result, ts });
+    const safeGame: Game = { ...result.game, appid };
+    const safeResult = { game: safeGame, ranked: result.ranked };
+    this.detailsCache.set(appid, { ...safeResult, ts });
+    if (_cachedGames) {
+      const idx = _cachedGames.data.findIndex((g) => g.appid === appid);
+      if (idx >= 0) {
+        _cachedGames.data[idx] = {
+          ..._cachedGames.data[idx],
+          ...safeGame,
+          appid,
+        };
+        this.saveGamesCache(_cachedGames.data, _cachedGames.timestamp);
+      }
+    }
     const storage = getStorageSafe();
     if (storage) {
       try {
-        storage.setItem(`next_unlock_cache_${appid}`, JSON.stringify({ ...result, ts }));
+        storage.setItem(`${STORAGE_KEYS.GAME_PREFIX}${appid}`, JSON.stringify({ ...safeResult, ts }));
       } catch {}
+    }
+  }
+
+  /**
+   * Re-computes `is_pinned` and `ranked` across all in-memory and localStorage cached games
+   * immediately when a pin is toggled so UI updates in 0ms without stale cache bugs.
+   */
+  private static recomputeAllCachedPins() {
+    const now = Date.now();
+    for (const [appid, entry] of this.detailsCache.entries()) {
+      const allAch = [...entry.ranked.locked, ...entry.ranked.unlocked];
+      const ranked = rankAchievements(allAch, this.pinnedIds);
+      const updatedGame: Game = {
+        ...entry.game,
+        achievements: [...ranked.locked, ...ranked.unlocked],
+      };
+      this.cacheResult(appid, { game: updatedGame, ranked }, now);
+    }
+    if (_cachedGames) {
+      _cachedGames.data = _cachedGames.data.map((g) => {
+        if (!g.achievements || g.achievements.length === 0) return g;
+        const ranked = rankAchievements(g.achievements, this.pinnedIds);
+        return {
+          ...g,
+          achievements: [...ranked.locked, ...ranked.unlocked],
+        };
+      });
+      this.saveGamesCache(_cachedGames.data, _cachedGames.timestamp);
     }
   }
 
@@ -433,6 +841,8 @@ export class SteamApiService {
     this.pinnedIds.clear();
     _cachedGames = null;
     _lastActiveApp = null;
+    _lastSelectedAppId = null;
+    _pinsHydratedFromBackend = false;
     const storage = getStorageSafe();
     if (storage) {
       try {
@@ -442,35 +852,46 @@ export class SteamApiService {
   }
 
   static async togglePin(achievementId: string): Promise<{ achievement_id: string; pinned: boolean }> {
+    this.loadPinsFromStorage();
+
+    // Optimistically update local pin state and re-rank all cached games immediately
+    const optimisticPinned = !this.pinnedIds.has(achievementId);
+    if (optimisticPinned) {
+      this.pinnedIds.add(achievementId);
+    } else {
+      this.pinnedIds.delete(achievementId);
+    }
+    this.savePinsToStorage();
+    this.recomputeAllCachedPins();
+
     try {
       const callFn = await getCallFn();
       if (callFn) {
         const res = await callFn('toggle_pin', achievementId);
-        const data = res && res.result ? res.result : res;
+        const data = res && res.result !== undefined ? res.result : res;
         if (data && data.achievement_id) {
           if (data.pinned) {
             this.pinnedIds.add(achievementId);
           } else {
             this.pinnedIds.delete(achievementId);
           }
+          this.savePinsToStorage();
+          this.recomputeAllCachedPins();
           return data;
         }
       }
     } catch (e) {
-      console.warn('[Next Unlock] RPC toggle_pin error, using fallback:', e);
+      console.warn('[Next Unlock] RPC toggle_pin error, using local state:', e);
     }
 
-    const fallbackRes = await MockSteamClientService.togglePin(achievementId);
-    if (fallbackRes.pinned) {
-      this.pinnedIds.add(achievementId);
-    } else {
-      this.pinnedIds.delete(achievementId);
-    }
-    return fallbackRes;
+    await MockSteamClientService.togglePin(achievementId).catch(() => {});
+    return { achievement_id: achievementId, pinned: optimisticPinned };
   }
 
   static async unlockAchievement(appid: number, achievementId: string): Promise<boolean> {
-    return MockSteamClientService.unlockAchievement(appid, achievementId);
+    const res = await MockSteamClientService.unlockAchievement(appid, achievementId);
+    this.detailsCache.delete(appid);
+    return res;
   }
 }
 

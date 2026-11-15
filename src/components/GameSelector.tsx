@@ -25,14 +25,15 @@ export const GameSelector: React.FC<GameSelectorProps> = ({
         focusable={true}
         onActivate={() => onSelectGame('all')}
         onClick={() => onSelectGame('all')}
-        className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border cursor-pointer focus:ring-2 focus:ring-[var(--focus-ring)] focus:scale-[1.02] focus:outline-none ${
+        data-testid="game-pill-all"
+        className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border cursor-pointer focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
           isAllSelected
-            ? 'bg-[var(--accent-primary)] text-white border-[var(--accent-primary)] shadow-sm'
-            : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-main)] hover:border-[var(--text-muted)]'
+            ? 'bg-[#389fff] text-white border-[#389fff] shadow-sm'
+            : 'bg-[#161f2c] text-slate-300 border-[#2e3d52] hover:text-white hover:bg-[#1e293b]'
         }`}
       >
         <Layers className="w-4 h-4 flex-shrink-0" />
-        <span>All Games Overview</span>
+        <span>All Games ({games.length})</span>
       </Focusable>
 
       {/* Individual Game Pills */}
@@ -47,32 +48,36 @@ export const GameSelector: React.FC<GameSelectorProps> = ({
             focusable={true}
             onActivate={() => onSelectGame(game.appid)}
             onClick={() => onSelectGame(game.appid)}
-            className={`flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border cursor-pointer focus:ring-2 focus:ring-[var(--focus-ring)] focus:scale-[1.02] focus:outline-none ${
+            data-testid={`game-pill-${game.appid}`}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border cursor-pointer focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
               isSelected
-                ? 'bg-[var(--accent-primary)] text-white border-[var(--accent-primary)] shadow-sm'
-                : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-main)] hover:border-[var(--text-muted)]'
+                ? 'bg-[#389fff] text-white border-[#389fff] shadow-sm'
+                : 'bg-[#161f2c] text-slate-300 border-[#2e3d52] hover:text-white hover:bg-[#1e293b]'
             }`}
           >
             {!isFailed && imgSrc ? (
               <img
                 src={imgSrc}
-                alt={game.name}
+                alt=""
                 onError={() => setFailedImages((prev) => ({ ...prev, [game.appid]: true }))}
-                className="w-5 h-5 rounded object-cover border border-slate-700/60 flex-shrink-0"
+                style={{ width: 38, height: 18 }}
+                className="rounded object-cover border border-slate-700/60 flex-shrink-0"
               />
             ) : (
               <Gamepad2 className="w-4 h-4 flex-shrink-0" />
             )}
             <span>{game.name}</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                isSelected
-                  ? 'bg-white/25 text-white'
-                  : 'bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-color)]'
-              }`}
-            >
-              {Math.round(game.completion_percentage)}%
-            </span>
+            {game.total_achievements > 0 && (
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                  isSelected
+                    ? 'bg-black/25 text-white'
+                    : 'bg-[#0e141b] text-slate-400 border border-[#2e3d52]'
+                }`}
+              >
+                {Math.round(game.completion_percentage)}%
+              </span>
+            )}
           </Focusable>
         );
       })}

@@ -1,210 +1,282 @@
-import { Game, RankedAchievements } from '../types/achievement';
+import { Game, RankedAchievements, Achievement } from '../types/achievement';
 
 const INITIAL_MOCK_GAMES: Game[] = [
   {
     appid: 1245620,
     name: 'Elden Ring',
-    header_image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg',
-    total_achievements: 42,
-    unlocked_count: 34,
-    completion_percentage: 80.9,
+    header_image: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg',
+    total_achievements: 6,
+    unlocked_count: 2,
+    completion_percentage: 33.3,
     achievements: [
+      {
+        id: 'ACH_MARGIT',
+        name: 'Margit, the Fell Omen',
+        description: 'Defeated Margit, the Fell Omen in Stormveil Castle.',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/9844ceb487fa8702ef9fddf8cf09b3767d985a14.jpg',
+        unlocked: true,
+        unlock_time: 1703980800,
+        global_percentage: 70.9,
+        rarity_tier: 'common',
+        category: 'Story',
+        hidden: false,
+      },
       {
         id: 'ACH_ELDEN_LORD',
         name: 'Elden Lord',
         description: 'Achieved the "Elden Lord" ending.',
-        icon: '',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/e50726be4aca4d2b1f5f14d36859fc8e6f710097.jpg',
         unlocked: true,
         unlock_time: 1704067200,
         global_percentage: 24.5,
         rarity_tier: 'common',
         category: 'Story',
         hidden: false,
-        progress: { current: 1, max: 1 },
-      },
-      {
-        id: 'ACH_MALENIA',
-        name: 'Shardbearer Malenia',
-        description: 'Defeated Shardbearer Malenia, Blade of Miquella in Elphael.',
-        icon: '',
-        unlocked: false,
-        unlock_time: null,
-        global_percentage: 4.1,
-        rarity_tier: 'ultra_rare',
-        category: 'Up Next',
-        hidden: false,
-        progress: { current: 85, max: 100 },
-        estimated_minutes: 45,
-        hint: 'Reach Elphael, Brace of the Haligtree. Prepare bleed or frost weapons for Phase 2 waterfowl dance.',
-        rec_score: 94.5,
       },
       {
         id: 'ACH_LEGENDARY_ARMAMENTS',
         name: 'Legendary Armaments',
         description: 'Acquired all 9 legendary armaments across the Lands Between.',
-        icon: '',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/212ba99b5c0bf79aca54dfc0a9767a108adc8f40.jpg',
         unlocked: false,
         unlock_time: null,
         global_percentage: 9.2,
         rarity_tier: 'rare',
-        category: 'Almost There',
         hidden: false,
         progress: { current: 8, max: 9 },
-        estimated_minutes: 20,
-        hint: 'Bolt of Gransax is missing in Royal Capital Leyndell before Ashen Capital transition.',
-        rec_score: 88.2,
       },
       {
         id: 'ACH_GODDEVOURING_SERPENT',
         name: 'Rykard, Lord of Blasphemy',
         description: 'Defeated Rykard, Lord of Blasphemy in Volcano Manor.',
-        icon: '',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/cb0aec39fcc664c4e586750177178b6814a52e0d.jpg',
         unlocked: false,
         unlock_time: null,
         global_percentage: 35.8,
         rarity_tier: 'common',
-        category: 'Easy Grabs',
         hidden: false,
-        progress: { current: 0, max: 1 },
-        estimated_minutes: 15,
-        hint: 'Equip the Serpent-Hunter spear found at the entrance of the boss arena.',
-        rec_score: 72.1,
       },
       {
         id: 'ACH_AGE_OF_STARS',
         name: 'Age of the Stars',
-        description: 'Achieved the "Age of the Stars" ending with Ranni.',
-        icon: '',
+        description: 'Achieved the "Age of the Stars" ending.',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/7e7369bceba13739025766a72560fe9ce7ac56c9.jpg',
         unlocked: false,
         unlock_time: null,
         global_percentage: 28.2,
-        rarity_tier: 'rare',
+        rarity_tier: 'common',
         category: 'Missable',
         hidden: true,
-        progress: { current: 4, max: 5 },
-        estimated_minutes: 30,
-        hint: 'Complete Ranni questline and summon her blue sign after final boss.',
-        rec_score: 65.0,
+      },
+      {
+        id: 'ACH_MALENIA',
+        name: 'Shardbearer Malenia',
+        description: 'Defeated Shardbearer Malenia, Blade of Miquella in Elphael.',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1245620/f704fcd82daf933dd3ce81c4d8ffea3ec65f26f4.jpg',
+        unlocked: false,
+        unlock_time: null,
+        global_percentage: 4.1,
+        rarity_tier: 'ultra_rare',
+        hidden: false,
       },
     ],
   },
   {
     appid: 1091500,
     name: 'Cyberpunk 2077',
-    header_image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg',
-    total_achievements: 44,
-    unlocked_count: 39,
-    completion_percentage: 88.6,
+    header_image: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1091500/e9047d8ec47ae3d94bb8b464fb0fc9e9972b4ac7/header.jpg',
+    total_achievements: 4,
+    unlocked_count: 1,
+    completion_percentage: 25.0,
     achievements: [
       {
-        id: 'ACH_NIGHT_CITY_LEGEND',
-        name: 'Night City Legend',
-        description: 'Complete all Cyberpunk 2077 achievements.',
-        icon: '',
-        unlocked: false,
-        unlock_time: null,
-        global_percentage: 3.8,
-        rarity_tier: 'ultra_rare',
-        category: 'Up Next',
+        id: 'ACH_THE_FOOL',
+        name: 'The Fool',
+        description: 'Become a mercenary and complete the prologue in Night City.',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1091500/7975d6e5d790b88f030195e3b1a38e49a5de1c8d.jpg',
+        unlocked: true,
+        unlock_time: 1710000000,
+        global_percentage: 88.5,
+        rarity_tier: 'common',
         hidden: false,
-        progress: { current: 39, max: 44 },
-        estimated_minutes: 90,
-        hint: 'Complete remaining 5 district gigs in Pacifica & Santo Domingo.',
-        rec_score: 91.0,
       },
       {
         id: 'ACH_AUTOPILOT',
         name: 'Autorestart',
         description: 'Perform a Quickhack upload on 3 cyberware enemies simultaneously.',
-        icon: '',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1091500/b3d81a567599dacdbf32fa024e4d9baafc19599b.jpg',
         unlocked: false,
         unlock_time: null,
         global_percentage: 42.1,
         rarity_tier: 'common',
-        category: 'Easy Grabs',
         hidden: false,
         progress: { current: 2, max: 3 },
-        estimated_minutes: 5,
-        hint: 'Use Contagion daemon quickhack on grouped Tyger Claws.',
-        rec_score: 82.0,
+      },
+      {
+        id: 'ACH_CITY_LIGHTS',
+        name: 'City Lights',
+        description: 'Complete all gigs and NCPD Scanner Hustles in City Center.',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1091500/31d389c6630c86434f193e7645cc78d22a790bff.jpg',
+        unlocked: false,
+        unlock_time: null,
+        global_percentage: 18.4,
+        rarity_tier: 'common',
+        hidden: false,
+        progress: { current: 9, max: 12 },
+      },
+      {
+        id: 'ACH_NIGHT_CITY_LEGEND',
+        name: 'Legend of The Afterlife',
+        description: "Reach maximum Street Cred and complete Rogue's storyline.",
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1091500/997859e0c89dda10f11a091a566999e68e6f9ce3.jpg',
+        unlocked: false,
+        unlock_time: null,
+        global_percentage: 3.8,
+        rarity_tier: 'ultra_rare',
+        hidden: false,
       },
     ],
   },
   {
     appid: 1145350,
     name: 'Hades II',
-    header_image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1145350/header.jpg',
-    total_achievements: 38,
-    unlocked_count: 31,
-    completion_percentage: 81.5,
+    header_image: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145350/91ac334a2c137d08968ccc0bc474a02579602100/header.jpg',
+    total_achievements: 4,
+    unlocked_count: 2,
+    completion_percentage: 50.0,
     achievements: [
+      {
+        id: 'ACH_EREBUS',
+        name: 'Witch of the Woods',
+        description: 'Clear Erebus and reach the edge of Oceanus.',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1145350/974c728e91ee0068539259f7cc6f4bc5f3373fd8.jpg',
+        unlocked: true,
+        unlock_time: 1714900000,
+        global_percentage: 68.8,
+        rarity_tier: 'common',
+        hidden: false,
+      },
       {
         id: 'ACH_CHRONOS_DOWN',
         name: 'Time Is Up',
         description: 'Vanquish Chronos in the depths of Tartarus.',
-        icon: '',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1145350/60027445235d9c9f118df7c7e006e9dc8928781f.jpg',
         unlocked: true,
         unlock_time: 1715000000,
         global_percentage: 32.1,
         rarity_tier: 'common',
-        category: 'Story',
         hidden: false,
-        progress: { current: 1, max: 1 },
+      },
+      {
+        id: 'ACH_TARTARUS',
+        name: 'Witch of the Abyss',
+        description: 'Reach the House of Hades in the depths of Tartarus.',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1145350/810e785977be190207d8be8ef1f4eeba83b3f3b2.jpg',
+        unlocked: false,
+        unlock_time: null,
+        global_percentage: 46.8,
+        rarity_tier: 'common',
+        hidden: false,
       },
       {
         id: 'ACH_ALL_ASPECTS',
         name: 'Master of Arms',
-        description: 'Unlock all Nocturnal Arms aspects.',
-        icon: '',
+        description: 'Unlock all 6 Nocturnal Arms aspects at the Silver Pool.',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/1145350/2f8d693ca8f4c5d1f809b5ca8052656dc530b31a.jpg',
         unlocked: false,
         unlock_time: null,
         global_percentage: 6.8,
         rarity_tier: 'rare',
-        category: 'Up Next',
         hidden: false,
-        progress: { current: 11, max: 12 },
-        estimated_minutes: 25,
-        hint: 'Gather 2 more Nightmare resources from high-heat Oath runs.',
-        rec_score: 89.0,
+        progress: { current: 5, max: 6 },
       },
     ],
   },
   {
     appid: 367520,
     name: 'Hollow Knight',
-    header_image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/367520/header.jpg',
-    total_achievements: 63,
-    unlocked_count: 55,
-    completion_percentage: 87.3,
+    header_image: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/367520/3c3489495136b26b34f8a9543c7f5645b99d388c/header.jpg',
+    total_achievements: 4,
+    unlocked_count: 4,
+    completion_percentage: 100.0,
     achievements: [
+      {
+        id: 'ACH_CHARMED',
+        name: 'Charmed',
+        description: 'Acquire your first Charm in Hallownest.',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/367520/6d15e62c48ba57d23e72b8f24fb775a44223cb8f.jpg',
+        unlocked: true,
+        unlock_time: 1700000000,
+        global_percentage: 76.7,
+        rarity_tier: 'common',
+        hidden: false,
+      },
+      {
+        id: 'ACH_PROTECTED',
+        name: 'Protected',
+        description: 'Acquire 4 Mask Shards to increase health.',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/367520/2461c5d7f6595602443a0bf0da24f48795873671.jpg',
+        unlocked: true,
+        unlock_time: 1700100000,
+        global_percentage: 47.7,
+        rarity_tier: 'common',
+        hidden: false,
+      },
+      {
+        id: 'ACH_HOLLOW_KNIGHT',
+        name: 'The Hollow Knight',
+        description: 'Defeat the Hollow Knight and complete the journey.',
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/367520/39db59cf079011e52d49a621de9c540652f9d2d4.jpg',
+        unlocked: true,
+        unlock_time: 1700200000,
+        global_percentage: 26.4,
+        rarity_tier: 'common',
+        hidden: false,
+      },
       {
         id: 'ACH_PANTHEON_5',
         name: 'Embrace the Void',
         description: 'Conquer the Pantheon of Hallownest and ascend.',
-        icon: '',
-        unlocked: false,
-        unlock_time: null,
+        icon: 'https://cdn.fastly.steamstatic.com/steamcommunity/public/images/apps/367520/671c16432f460cdd9eff88d5c01b4abc7cfe2703.jpg',
+        unlocked: true,
+        unlock_time: 1700300000,
         global_percentage: 2.9,
         rarity_tier: 'ultra_rare',
-        category: 'Up Next',
         hidden: false,
-        progress: { current: 4, max: 5 },
-        estimated_minutes: 60,
-        hint: 'Practice Absolute Radiance in the Hall of Gods before the final climb.',
-        rec_score: 90.0,
       },
     ],
   },
 ];
 
-let mockGames = JSON.parse(JSON.stringify(INITIAL_MOCK_GAMES));
-let pinnedIds = new Set<string>(['ACH_MALENIA']);
+let mockGames: Game[] = JSON.parse(JSON.stringify(INITIAL_MOCK_GAMES));
+let pinnedIds = new Set<string>(['ACH_LEGENDARY_ARMAMENTS']);
+
+function scoreAchievement(ach: Achievement): number {
+  if (ach.unlocked) return 0.0;
+  const ratio =
+    ach.progress && ach.progress.max > 1 && ach.progress.current > 0
+      ? Math.min(1.0, Math.max(0.0, ach.progress.current / ach.progress.max))
+      : 0.0;
+  const pct = Math.min(100.0, Math.max(0.0, ach.global_percentage || 0));
+  const vis = !ach.hidden && ach.description?.trim() ? 15.0 : 0.0;
+  return Math.round((ratio * 60.0 + pct * 0.8 + vis) * 10) / 10;
+}
 
 export class MockSteamClientService {
+  static reset() {
+    mockGames = JSON.parse(JSON.stringify(INITIAL_MOCK_GAMES));
+    pinnedIds = new Set<string>(['ACH_LEGENDARY_ARMAMENTS']);
+  }
+
+  static getPinned(): string[] {
+    return Array.from(pinnedIds);
+  }
+
   static updatePinnedStateOnGames() {
     mockGames.forEach((game: Game) => {
       game.achievements.forEach((ach) => {
         ach.is_pinned = pinnedIds.has(ach.id);
+        ach.rec_score = scoreAchievement(ach);
       });
     });
   }
@@ -220,21 +292,29 @@ export class MockSteamClientService {
 
   static getGameDetailsSync(appid: number): { game: Game; ranked: RankedAchievements } {
     this.updatePinnedStateOnGames();
-    const targetGame = mockGames.find((g: Game) => g.appid === appid) || mockGames[0];
-    const game = JSON.parse(JSON.stringify(targetGame));
+    const targetGame = mockGames.find((g: Game) => g.appid === appid) || {
+      appid,
+      name: appid === 999999 ? 'Untracked Indie Prototype' : `App ${appid}`,
+      header_image: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/340/header.jpg',
+      total_achievements: 0,
+      unlocked_count: 0,
+      completion_percentage: 0.0,
+      achievements: [],
+    };
+    const game: Game = JSON.parse(JSON.stringify(targetGame));
     const achievements = game.achievements;
 
-    const pinned: any[] = [];
-    const up_next: any[] = [];
-    const almost_there: any[] = [];
-    const easy_grabs: any[] = [];
-    const missable: any[] = [];
-    const locked: any[] = [];
-    const unlocked: any[] = [];
+    const pinned: Achievement[] = [];
+    const almost_there: Achievement[] = [];
+    const easy_grabs: Achievement[] = [];
+    const missable: Achievement[] = [];
+    const locked: Achievement[] = [];
+    const unlocked: Achievement[] = [];
 
-    achievements.forEach((ach: any) => {
+    achievements.forEach((ach: Achievement) => {
       const isPinned = pinnedIds.has(ach.id);
       ach.is_pinned = isPinned;
+      ach.rec_score = scoreAchievement(ach);
 
       if (ach.unlocked) {
         unlocked.push(ach);
@@ -244,21 +324,26 @@ export class MockSteamClientService {
       locked.push(ach);
       if (isPinned) pinned.push(ach);
 
-      const ratio = ach.progress ? ach.progress.current / ach.progress.max : 0;
-      if (ratio >= 0.75) almost_there.push(ach);
-      if (ach.global_percentage >= 30 || (ach.estimated_minutes && ach.estimated_minutes <= 15)) {
+      const ratio = ach.progress && ach.progress.max > 1 ? ach.progress.current / ach.progress.max : 0;
+      if (ratio >= 0.5) almost_there.push(ach);
+      if (ach.global_percentage >= 25.0 && (!ach.hidden || ratio > 0)) {
         easy_grabs.push(ach);
       }
-      if (ach.hidden || ach.category === 'Missable') missable.push(ach);
+      if (ach.hidden || ach.category === 'Missable' || ach.global_percentage <= 10.0) {
+        missable.push(ach);
+      }
     });
 
-    const sortedLocked = [...locked].sort((a, b) => (b.rec_score || 0) - (a.rec_score || 0));
+    locked.sort((a, b) => (b.rec_score || 0) - (a.rec_score || 0));
+    const actionableLocked = locked.filter(
+      (a) => !a.hidden || (a.progress && a.progress.max > 1 && a.progress.current > 0)
+    );
 
     return {
       game,
       ranked: {
         pinned,
-        up_next: sortedLocked.slice(0, 3),
+        up_next: (actionableLocked.length > 0 ? actionableLocked : locked).slice(0, 5),
         almost_there,
         easy_grabs,
         missable,
@@ -287,7 +372,7 @@ export class MockSteamClientService {
     const game = mockGames.find((g: Game) => g.appid === appid);
     if (!game) return Promise.resolve(false);
 
-    const ach = game.achievements.find((a: any) => a.id === achievement_id);
+    const ach = game.achievements.find((a: Achievement) => a.id === achievement_id);
     if (ach && !ach.unlocked) {
       ach.unlocked = true;
       ach.unlock_time = Math.floor(Date.now() / 1000);

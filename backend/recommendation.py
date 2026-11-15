@@ -1,68 +1,183 @@
 """
-Recommendation engine for Next Unlock achievements.
-Ranks locked achievements by effort, completion proximity, global rarity, and tags.
+Canonical Recommendation & Ranking Engine for Next Unlock (Spec 03).
+
+Single source of truth for scoring and ranking achievements on the backend.
+Must remain 100% mathematically aligned with `rankAchievements` in `src/services/steamApi.ts`.
 """
 
-def rank_achievements(achievements, pinned_ids=None):
-    """
-    Ranks achievements into actionable categories:
-    - Pinned: User explicit focus
-    - Up Next: Top priority recommendation (highest score)
-    - Almost There: Progress >= 75%
-    - Easy Grabs: Global % >= 30% or estimated minutes <= 15
-    - Missable: Hidden or tagged missable
-    """
-    if pinned_ids is None:
-        pinned_ids = []
+from __future__ import annotations
 
-    ranked = {
+from collections.abc import Iterable, Mapping
+
+from backend.models import AchievementData, AchievementProgress, RankedAchievementsData
+
+
+def get_progress_ratio(ach: Mapping[str, object]) -> float:
+    """
+    Returns multi-step progress ratio in [0.0, 1.0].
+    Only multi-step achievements (max > 1 and current > 0) contribute partial progress.
+    """
+    progress = ach.get("progress")
+    if isinstance(progress, Mapping):
+        try:
+            raw_max = progress.get("max", 0)
+            raw_cur = progress.get("current", 0)
+            max_val = float(raw_max) if isinstance(raw_max, (int, float, str)) else 0.0
+            cur_val = float(raw_cur) if isinstance(raw_cur, (int, float, str)) else 0.0
+            if max_val > 1 and cur_val > 0:
+                return min(1.0, max(0.0, cur_val / max_val))
+        except (TypeError, ValueError):
+            return 0.0
+    return 0.0
+
+
+def compute_recommendation_score(ach: Mapping[str, object]) -> float:
+    """
+    Computes the canonical Next Unlock recommendation score (Spec 03):
+      rec_score = round((ratio * 60.0) + (global_pct * 0.8) + visibility_bonus, 1)
+
+    Higher score = easier / closer to completion = recommended next.
+    Unlocked achievements always score 0.0.
+    """
+    if bool(ach.get("unlocked")):
+        return 0.0
+
+    ratio = get_progress_ratio(ach)
+    raw_pct = ach.get("global_percentage", 0.0)
+    try:
+        global_pct = float(raw_pct) if isinstance(raw_pct, (int, float, str)) else 0.0
+    except (TypeError, ValueError):
+        global_pct = 0.0
+    global_pct = min(100.0, max(0.0, global_pct))
+
+    is_hidden = bool(ach.get("hidden", False))
+    desc = str(ach.get("description") or "").strip()
+    visibility_bonus = 15.0 if (not is_hidden and len(desc) > 0) else 0.0
+
+    score = (ratio * 60.0) + (global_pct * 0.8) + visibility_bonus
+    return round(score, 1)
+
+
+def _clone_achievement(
+    raw_ach: Mapping[str, object],
+    is_pinned: bool,
+    rec_score: float,
+) -> AchievementData:
+    raw_pct = raw_ach.get("global_percentage", 0.0)
+    pct = float(raw_pct) if isinstance(raw_pct, (int, float, str)) else 0.0
+    raw_ut = raw_ach.get("unlock_time")
+    unlock_time = int(raw_ut) if isinstance(raw_ut, (int, float)) and int(raw_ut) > 0 else None
+
+    ach: AchievementData = {
+        "id": str(raw_ach.get("id", "")),
+        "name": str(raw_ach.get("name", "")),
+        "description": str(raw_ach.get("description", "")),
+        "icon": str(raw_ach.get("icon", "")),
+        "unlocked": bool(raw_ach.get("unlocked", False)),
+        "unlock_time": unlock_time,
+        "global_percentage": pct,
+        "rarity_tier": str(raw_ach.get("rarity_tier", "common")),
+        "hidden": bool(raw_ach.get("hidden", False)),
+        "is_pinned": is_pinned,
+        "rec_score": rec_score,
+    }
+    cat = raw_ach.get("category")
+    if isinstance(cat, str) and cat:
+        ach["category"] = cat
+
+    prog = raw_ach.get("progress")
+    if isinstance(prog, Mapping):
+        raw_c = prog.get("current", 0)
+        raw_m = prog.get("max", 0)
+        c_val = float(raw_c) if isinstance(raw_c, (int, float, str)) else 0.0
+        m_val = float(raw_m) if isinstance(raw_m, (int, float, str)) else 0.0
+        if m_val > 0:
+            typed_prog: AchievementProgress = {"current": c_val, "max": m_val}
+            ach["progress"] = typed_prog
+    return ach
+
+
+def rank_achievements(
+    achievements: Iterable[Mapping[str, object]],
+    pinned_ids: Iterable[str] | None = None,
+) -> RankedAchievementsData:
+    """
+    Ranks achievements into actionable categories defined in Spec 03:
+    - pinned: User explicit focus (locked achievements in pinned_ids)
+    - up_next: Top 5 most achievable locked recommendations
+    - almost_there: Multi-step locked achievements with >= 50% progress
+    - easy_grabs: Locked achievements unlocked by >= 25% of players
+    - missable: Hidden / secret or rare (<= 10%) or explicitly tagged Missable locked achievements
+    - locked: All locked achievements sorted by rec_score descending
+    - unlocked: All unlocked achievements
+    """
+    pinned_set = set(pinned_ids) if pinned_ids is not None else set()
+
+    ranked: RankedAchievementsData = {
         "pinned": [],
         "up_next": [],
         "almost_there": [],
         "easy_grabs": [],
         "missable": [],
         "locked": [],
-        "unlocked": []
+        "unlocked": [],
     }
 
-    for ach in achievements:
-        if ach.get("unlocked"):
-            ranked["unlocked"].append(ach)
+    for raw_ach in achievements:
+        ach_id = str(raw_ach.get("id", ""))
+        is_pinned = ach_id in pinned_set
+
+        if bool(raw_ach.get("unlocked")):
+            unlocked_ach = _clone_achievement(raw_ach, is_pinned=is_pinned, rec_score=0.0)
+            ranked["unlocked"].append(unlocked_ach)
             continue
 
-        ach_id = ach.get("id")
-        is_pinned = ach_id in pinned_ids
-        ach["is_pinned"] = is_pinned
+        score = compute_recommendation_score(raw_ach)
+        ach = _clone_achievement(raw_ach, is_pinned=is_pinned, rec_score=score)
+        ratio = get_progress_ratio(ach)
+        global_pct = ach["global_percentage"]
 
         if is_pinned:
             ranked["pinned"].append(ach)
 
-        # Calculate recommendation score
-        progress = ach.get("progress", {})
-        cur = progress.get("current", 0)
-        max_val = progress.get("max", 1)
-        ratio = (cur / max_val) if max_val > 0 else 0
-        global_pct = ach.get("global_percentage", 10.0)
-        est_min = ach.get("estimated_minutes", 30)
-
-        # Score formula: high ratio + reasonable global % + low time = higher score
-        score = (ratio * 50) + (global_pct * 0.3) + max(0, (60 - est_min) * 0.5)
-        ach["rec_score"] = round(score, 1)
-
-        # Categorize
-        if ratio >= 0.75:
+        if ratio >= 0.5:
             ranked["almost_there"].append(ach)
 
-        if global_pct >= 30.0 or est_min <= 15:
+        if global_pct >= 25.0 and (not ach["hidden"] or ratio > 0):
             ranked["easy_grabs"].append(ach)
 
-        if ach.get("hidden") or ach.get("category") == "Missable":
+        if ach["hidden"] or ach.get("category") == "Missable" or global_pct <= 10.0:
             ranked["missable"].append(ach)
 
         ranked["locked"].append(ach)
 
-    # Sort locked by rec_score descending for "Up Next"
-    sorted_locked = sorted(ranked["locked"], key=lambda x: x.get("rec_score", 0), reverse=True)
-    ranked["up_next"] = sorted_locked[:3]  # Top 3 most promising
+    def locked_sort_key(a: AchievementData) -> tuple[float, float, str]:
+        return (
+            -float(a.get("rec_score", 0.0)),
+            -float(a["global_percentage"]),
+            a["name"],
+        )
+
+    ranked["locked"].sort(key=locked_sort_key)
+    ranked["pinned"].sort(key=locked_sort_key)
+    ranked["almost_there"].sort(
+        key=lambda a: (-get_progress_ratio(a), -float(a.get("rec_score", 0.0)))
+    )
+    ranked["easy_grabs"].sort(key=lambda a: (-float(a["global_percentage"]), a["name"]))
+    ranked["missable"].sort(key=locked_sort_key)
+    ranked["unlocked"].sort(
+        key=lambda a: (
+            -(int(a["unlock_time"] or 0)),
+            float(a["global_percentage"]),
+        )
+    )
+
+    # For Up Next, prefer visible achievements or achievements with active progress;
+    # fallback to all locked if only hidden achievements remain.
+    actionable_locked = [
+        a for a in ranked["locked"] if not a["hidden"] or get_progress_ratio(a) > 0
+    ]
+    source_for_up_next = actionable_locked if actionable_locked else ranked["locked"]
+    ranked["up_next"] = source_for_up_next[:5]
 
     return ranked
