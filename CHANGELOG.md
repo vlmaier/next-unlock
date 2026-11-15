@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/vlmaier/next-unlock/compare/v2.0.0...v2.1.0) (2026-11-15)
+
+
+### Features
+
+* add Steam Achievement Sets support (Base Game, DLC sets, and Archived achievements) ([2c14794](https://github.com/vlmaier/next-unlock/commit/2c1479462f0e7d9a0f92e24c4c22aa748244b38d))
+
 # [2.0.0](https://github.com/vlmaier/next-unlock/compare/v1.3.2...v2.0.0) (2026-11-15)
 
 
