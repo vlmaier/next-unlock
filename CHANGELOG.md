@@ -1,3 +1,10 @@
+## [2.3.1](https://github.com/vlmaier/next-unlock/compare/v2.3.0...v2.3.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* resolve Steam Deck QAM overflow, top-bar overlap, achievement deduplication, hash-prefixed DLC assets, English guides, and full-library sync ([1a55c7b](https://github.com/vlmaier/next-unlock/commit/1a55c7b983dbe345ccf213157ac5e7c64baccd46))
+
 # [2.3.0](https://github.com/vlmaier/next-unlock/compare/v2.2.0...v2.3.0) (2026-11-15)
 
 
