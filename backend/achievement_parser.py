@@ -418,11 +418,12 @@ def parse_appmanifest(filepath: str) -> GameData | None:
         if any(ign in lower_name for ign in IGNORED_NAME_SUBSTRINGS):
             return None
 
-        # 1. Check SteamOS local librarycache first (instantaneous local stats)
+        # 1. Check SteamOS local librarycache first (instantaneous local summary counts only;
+        #    avoid leaking localized/partial librarycache titles when English disk cache is absent)
         local_stats = parse_local_user_stats(appid)
         total_ach = local_stats["total"]
         unlocked_count = local_stats["unlocked_count"]
-        ach_list: list[AchievementData] = list(local_stats["achievements"])
+        ach_list: list[AchievementData] = []
 
         # 2. Enrich from Next Unlock disk achievement cache if available
         cached_ach = load_cached_achievements(appid)

@@ -5,7 +5,7 @@ import { CategoryFilter } from './CategoryFilter';
 import { AchievementCard } from './AchievementCard';
 import { SearchBar } from './SearchBar';
 import { GameSelector } from './GameSelector';
-import { Trophy, Award, CheckCircle2, ListFilter, Sparkles, Layers, Gamepad2, RefreshCw, ArrowLeft, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Trophy, Award, CheckCircle2, ListFilter, Sparkles, Layers, Gamepad2, RefreshCw, ArrowLeft, Eye, EyeOff, AlertTriangle, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Focusable } from './deckyUi';
 import { rankAchievements, computeAchievementSets } from '../services/steamApi';
 
@@ -80,6 +80,9 @@ interface RibbonTarget {
   completionPct: number;
 }
 
+type SortOption = 'recommended' | 'rarity_desc' | 'rarity_asc' | 'name_asc' | 'progress_desc';
+const PAGE_SIZE = 24;
+
 export const FullDashboard: React.FC<FullDashboardProps> = ({
   games,
   selectedAppId,
@@ -98,6 +101,8 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
   const [revealAllSecrets, setRevealAllSecrets] = useState(false);
   const [onlyMissable, setOnlyMissable] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('recommended');
+  const [currentPage, setCurrentPage] = useState(1);
   const [imgIdx, setImgIdx] = useState(0);
   const pendingSetIdRef = useRef<number | 'all' | null>(null);
 
@@ -312,17 +317,54 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
       list = list.filter((a) => !a.unlocked && Boolean(a.is_missable || a.category === 'Missable'));
     }
 
-    if (!searchQuery.trim()) return list;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (a) =>
+          a.name.toLowerCase().includes(q) ||
+          a.description.toLowerCase().includes(q) ||
+          (a.gameName && a.gameName.toLowerCase().includes(q)) ||
+          (a.set_name && a.set_name.toLowerCase().includes(q))
+      );
+    }
 
-    const q = searchQuery.toLowerCase();
-    return list.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        a.description.toLowerCase().includes(q) ||
-        (a.gameName && a.gameName.toLowerCase().includes(q)) ||
-        (a.set_name && a.set_name.toLowerCase().includes(q))
-    );
-  }, [activeRanked, activeCategory, onlyMissable, searchQuery]);
+    if (sortBy === 'recommended') {
+      return list;
+    }
+
+    const sorted = [...list];
+    if (sortBy === 'rarity_desc') {
+      sorted.sort((a, b) => (b.global_percentage || 0) - (a.global_percentage || 0));
+    } else if (sortBy === 'rarity_asc') {
+      sorted.sort((a, b) => (a.global_percentage || 0) - (b.global_percentage || 0));
+    } else if (sortBy === 'name_asc') {
+      sorted.sort((a, b) =>
+        (a.name || '')
+          .trim()
+          .localeCompare((b.name || '').trim(), 'en', {
+            sensitivity: 'base',
+            numeric: true,
+            ignorePunctuation: true,
+          })
+      );
+    } else if (sortBy === 'progress_desc') {
+      const ratio = (a: Achievement) =>
+        a.progress && a.progress.max > 0 ? a.progress.current / a.progress.max : -1;
+      sorted.sort((a, b) => ratio(b) - ratio(a));
+    }
+    return sorted;
+  }, [activeRanked, activeCategory, onlyMissable, searchQuery, sortBy]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedAppId, activeSetId, activeCategory, onlyMissable, searchQuery, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAchievements.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedAchievements = useMemo(
+    () => filteredAchievements.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [filteredAchievements, safePage]
+  );
 
   const imageCandidates = useMemo(() => {
     if (!selectedGame) return [];
@@ -794,6 +836,82 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
           onSelectCategory={setActiveCategory}
           counts={counts}
         />
+
+        {/* Sort & Paging Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Focusable flow-children="row" className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
+              <ArrowUpDown className="w-3 h-3" />
+              <span>Sort:</span>
+            </span>
+            {(
+              [
+                { id: 'recommended', label: 'Recommended' },
+                { id: 'rarity_desc', label: 'Easiest %' },
+                { id: 'rarity_asc', label: 'Rarest %' },
+                { id: 'progress_desc', label: 'Progress' },
+                { id: 'name_asc', label: 'A–Z' },
+              ] as const
+            ).map((opt) => {
+              const active = sortBy === opt.id;
+              return (
+                <Focusable
+                  key={opt.id}
+                  focusable={true}
+                  onActivate={() => setSortBy(opt.id)}
+                  onClick={() => setSortBy(opt.id)}
+                  data-testid={`sort-btn-${opt.id}`}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer focus:outline-none ${
+                    active
+                      ? 'bg-[#389fff]/20 text-[#389fff] border-[#389fff]/50'
+                      : 'bg-[#161f2c] text-slate-300 border-[#2e3d52] hover:text-white'
+                  }`}
+                >
+                  {opt.label}
+                </Focusable>
+              );
+            })}
+          </Focusable>
+
+          {totalPages > 1 && (
+            <Focusable flow-children="row" className="flex items-center gap-1.5">
+              <Focusable
+                focusable={safePage > 1}
+                onActivate={() => safePage > 1 && setCurrentPage((p) => Math.max(1, p - 1))}
+                onClick={() => safePage > 1 && setCurrentPage((p) => Math.max(1, p - 1))}
+                data-testid="page-prev-btn"
+                className={`px-2 py-1 rounded-md text-[11px] font-bold border flex items-center gap-1 focus:outline-none ${
+                  safePage > 1
+                    ? 'bg-[#161f2c] text-slate-200 border-[#2e3d52] hover:bg-[#1e293b] cursor-pointer'
+                    : 'bg-[#161f2c]/40 text-slate-500 border-[#2e3d52]/50 cursor-not-allowed'
+                }`}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Prev</span>
+              </Focusable>
+              <span
+                data-testid="page-indicator"
+                className="text-[11px] font-bold text-slate-300 px-2 tabular-nums"
+              >
+                {safePage} / {totalPages}
+              </span>
+              <Focusable
+                focusable={safePage < totalPages}
+                onActivate={() => safePage < totalPages && setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => safePage < totalPages && setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                data-testid="page-next-btn"
+                className={`px-2 py-1 rounded-md text-[11px] font-bold border flex items-center gap-1 focus:outline-none ${
+                  safePage < totalPages
+                    ? 'bg-[#161f2c] text-slate-200 border-[#2e3d52] hover:bg-[#1e293b] cursor-pointer'
+                    : 'bg-[#161f2c]/40 text-slate-500 border-[#2e3d52]/50 cursor-not-allowed'
+                }`}
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Focusable>
+            </Focusable>
+          )}
+        </div>
       </div>
 
       {/* Achievement Grid */}
@@ -812,17 +930,52 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
           </p>
         </div>
       ) : (
-        <Focusable flow-children="grid" className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {filteredAchievements.map((ach) => (
-            <AchievementCard
-              key={`${ach.appid || selectedGame?.appid || 'g'}-${ach.id}`}
-              achievement={ach}
-              appid={ach.appid || selectedGame?.appid}
-              forceRevealSpoilers={revealAllSecrets}
-              onTogglePin={onTogglePin}
-            />
-          ))}
-        </Focusable>
+        <>
+          <Focusable flow-children="grid" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {pagedAchievements.map((ach) => (
+              <AchievementCard
+                key={`${ach.appid || selectedGame?.appid || 'g'}-${ach.id}`}
+                achievement={ach}
+                appid={ach.appid || selectedGame?.appid}
+                forceRevealSpoilers={revealAllSecrets}
+                onTogglePin={onTogglePin}
+              />
+            ))}
+          </Focusable>
+          {totalPages > 1 && (
+            <Focusable flow-children="row" className="flex items-center justify-center gap-2 pt-2">
+              <Focusable
+                focusable={safePage > 1}
+                onActivate={() => safePage > 1 && setCurrentPage((p) => Math.max(1, p - 1))}
+                onClick={() => safePage > 1 && setCurrentPage((p) => Math.max(1, p - 1))}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 focus:outline-none ${
+                  safePage > 1
+                    ? 'bg-[#161f2c] text-slate-200 border-[#2e3d52] hover:bg-[#1e293b] cursor-pointer'
+                    : 'bg-[#161f2c]/40 text-slate-500 border-[#2e3d52]/50 cursor-not-allowed'
+                }`}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Previous</span>
+              </Focusable>
+              <span className="text-xs font-bold text-slate-300 px-2 tabular-nums">
+                Page {safePage} of {totalPages}
+              </span>
+              <Focusable
+                focusable={safePage < totalPages}
+                onActivate={() => safePage < totalPages && setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => safePage < totalPages && setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 focus:outline-none ${
+                  safePage < totalPages
+                    ? 'bg-[#161f2c] text-slate-200 border-[#2e3d52] hover:bg-[#1e293b] cursor-pointer'
+                    : 'bg-[#161f2c]/40 text-slate-500 border-[#2e3d52]/50 cursor-not-allowed'
+                }`}
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Focusable>
+            </Focusable>
+          )}
+        </>
       )}
       </div>
     </div>

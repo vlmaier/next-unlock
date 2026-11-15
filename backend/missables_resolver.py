@@ -381,8 +381,10 @@ def enrich_achievements_with_missables(
             guide_links = list(dict.fromkeys(raw_links))
             for guide_url in guide_links[:2]:
                 guide_html = _http_get_text(guide_url, timeout=3.5)
-                if guide_html:
-                    missable_lookup.update(parse_steam_guide_missables(guide_html, achievements))
+                if guide_html is None:
+                    # Stop immediately on network/429 error so we don't compound rate limits
+                    break
+                missable_lookup.update(parse_steam_guide_missables(guide_html, achievements))
                 if missable_lookup:
                     break
 

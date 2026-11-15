@@ -33,7 +33,8 @@ from backend.recommendation import compute_achievement_sets, compute_recommendat
 
 logger = logging.getLogger("next_unlock.fetcher")
 
-CACHE_TTL_SECONDS = 86400  # 24 hours: picks up newly released DLC sets & hash-prefixed store assets
+CACHE_TTL_SECONDS = 86400  # 24 hours
+CACHE_SCHEMA_VERSION = 3  # Invalidates legacy localized/unhashed/no-DLC disk caches
 
 
 def get_cache_dir() -> str:
@@ -131,6 +132,7 @@ def load_cached_achievements(appid: int) -> FetchedAchievementsEnvelope | None:
                 raw_hdr = data.get("header_image")
                 raw_sets = data.get("achievement_sets")
                 raw_cached_at = data.get("cached_at")
+                raw_cache_ver = data.get("cache_version")
                 typed_raw_sets = (
                     [s for s in raw_sets if isinstance(s, Mapping)]
                     if isinstance(raw_sets, list)
@@ -146,6 +148,8 @@ def load_cached_achievements(appid: int) -> FetchedAchievementsEnvelope | None:
                 }
                 if isinstance(raw_cached_at, (int, float)):
                     envelope["cached_at"] = float(raw_cached_at)
+                if isinstance(raw_cache_ver, int):
+                    envelope["cache_version"] = raw_cache_ver
                 return envelope
             if isinstance(data, list) and len(data) > 0:
                 ach_list = enrich_achievements_with_missables(
@@ -185,6 +189,7 @@ def save_cached_achievements(
             "achievements": ach_list,
             "achievement_sets": computed_sets,
             "cached_at": time.time(),
+            "cache_version": CACHE_SCHEMA_VERSION,
         }
         if header_image:
             payload["header_image"] = header_image
@@ -367,11 +372,11 @@ def _parse_valve_ssr_data(content: str) -> ParsedCommunityHtmlResult | None:
                 ik = str(item.get("internal_key", ""))
                 raw_pct_val = pcts.get(ik, 0.0)
                 try:
-                    pct = (
-                        round(float(raw_pct_val), 1)
-                        if isinstance(raw_pct_val, (int, float, str))
-                        else 0.0
-                    )
+                    if isinstance(raw_pct_val, (int, float, str)):
+                        val_f = float(raw_pct_val)
+                        pct = round(val_f, 2) if 0.0 < val_f < 0.1 else round(val_f, 1)
+                    else:
+                        pct = 0.0
                 except (ValueError, TypeError):
                     pct = 0.0
 
@@ -535,8 +540,10 @@ def fetch_achievements_from_steam(
         cached = load_cached_achievements(appid_int)
         if cached and cached["achievements"]:
             cached_at = cached.get("cached_at")
-            is_fresh = isinstance(cached_at, (int, float)) and (
-                time.time() - float(cached_at) < CACHE_TTL_SECONDS
+            is_fresh = (
+                isinstance(cached_at, (int, float))
+                and (time.time() - float(cached_at) < CACHE_TTL_SECONDS)
+                and cached.get("cache_version") == CACHE_SCHEMA_VERSION
             )
             if is_fresh:
                 return cached

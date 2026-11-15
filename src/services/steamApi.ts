@@ -4,10 +4,10 @@ import { MockSteamClientService } from './mockSteamClient';
 declare const process: any;
 
 const STORAGE_KEYS = {
-  GAMES_LIST: 'next_unlock_games_list_v2',
+  GAMES_LIST: 'next_unlock_games_list_v3',
   PINS: 'next_unlock_pins_v2',
   LAST_APPID: 'next_unlock_last_appid_v2',
-  GAME_PREFIX: 'next_unlock_cache_v2_',
+  GAME_PREFIX: 'next_unlock_cache_v3_',
 };
 
 export function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
@@ -987,9 +987,8 @@ export class SteamApiService {
       };
 
       const result = { game, ranked };
-      if (allSorted.length >= total) {
-        this.cacheResult(appid, result, now);
-      }
+      // Do not persist native-only fallback to localStorage so localized SteamOS titles
+      // or missing global percentages don't shadow English backend data on next open.
       return result;
     }
 

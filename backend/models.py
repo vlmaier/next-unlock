@@ -87,6 +87,7 @@ class GameDetailsResponse(TypedDict):
 class _EnvelopeOptional(TypedDict, total=False):
     achievement_sets: list[AchievementSetData]
     cached_at: float
+    cache_version: int
 
 
 class FetchedAchievementsEnvelope(_EnvelopeOptional):

@@ -20,7 +20,11 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
 }) => {
   const [revealHidden, setRevealHidden] = useState(false);
 
-  const pct = Math.round((achievement.global_percentage || 0) * 10) / 10;
+  const rawPct = achievement.global_percentage || 0;
+  const pct =
+    rawPct > 0 && rawPct < 0.1
+      ? Math.round(rawPct * 100) / 100
+      : Math.round(rawPct * 10) / 10;
   const getRarityBadge = () => {
     if (pct <= 5.0) {
       return {
