@@ -1,3 +1,10 @@
+## [2.5.2](https://github.com/vlmaier/next-unlock/compare/v2.5.1...v2.5.2) (2026-11-15)
+
+
+### Bug Fixes
+
+* prevent 429 rate-limits during full-library sync and preserve native nTotal/nAchieved counts ([ba30387](https://github.com/vlmaier/next-unlock/commit/ba3038716e6e2955604ad08a1f1c51b2aa4f3bf0))
+
 ## [2.5.1](https://github.com/vlmaier/next-unlock/compare/v2.5.0...v2.5.1) (2026-11-15)
 
 
