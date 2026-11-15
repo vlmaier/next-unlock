@@ -195,12 +195,17 @@ class Plugin:
         self,
         appid: int,
         force_refresh: bool = False,
+        background_sync: bool = False,
     ) -> GameDetailsResponse:
         """Returns achievement details and canonical rankings for a specific game."""
         appid_int = int(appid)
         self.last_selected_appid = appid_int
 
-        fetched = fetch_achievements_from_steam(appid_int, force_refresh=force_refresh)
+        fetched = fetch_achievements_from_steam(
+            appid_int,
+            force_refresh=force_refresh,
+            allow_missables_network=not background_sync,
+        )
         raw_achievements: list[AchievementData] = list(fetched["achievements"])
 
         # Read SteamOS local userdata librarycache for offline/non-running unlock & progress state
@@ -250,8 +255,10 @@ class Plugin:
         ranked = rank_achievements(achievements, self.pinned_achievements)
         scored_achievements = ranked["locked"] + ranked["unlocked"]
 
-        unlocked_count = len(ranked["unlocked"])
-        total = len(scored_achievements)
+        total = max(len(scored_achievements), local_stats["total"])
+        unlocked_count = max(len(ranked["unlocked"]), local_stats["unlocked_count"])
+        if total > 0:
+            unlocked_count = min(total, unlocked_count)
         pct = round((unlocked_count / total) * 100.0, 1) if total > 0 else 0.0
 
         header_img = (

@@ -217,5 +217,35 @@ describe('SteamApiService & Canonical Recommendation Engine', () => {
         delete (window as any).collectionStore;
       }
     });
+
+    it('preserves native nTotal/nAchieved when SteamOS only caches partial vecHighlight (e.g. 25/27 instead of 12/12)', async () => {
+      const twelveHighlights = Array.from({ length: 12 }, (_, idx) => ({
+        strID: `HS_ACH_${idx}`,
+        strName: `Highlight ${idx}`,
+        strDescription: 'Unlocked highlight',
+        bAchieved: true,
+        flAchieved: 40.0,
+      }));
+      (window as any).appDetailsStore = {
+        GetAchievements: () => ({
+          data: {
+            nTotal: 27,
+            nAchieved: 25,
+            vecHighlight: twelveHighlights,
+            vecUnachieved: [],
+          },
+        }),
+      };
+
+      try {
+        __setCallFn(async () => null);
+        const details = await SteamApiService.getGameDetails(1161580, true);
+        expect(details.game.total_achievements).toBe(27);
+        expect(details.game.unlocked_count).toBe(25);
+        expect(details.game.completion_percentage).toBe(92.6);
+      } finally {
+        delete (window as any).appDetailsStore;
+      }
+    });
   });
 });

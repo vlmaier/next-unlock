@@ -722,23 +722,35 @@ export class SteamApiService {
 
     const resultsByAppId = new Map<number, Game>();
     let completed = 0;
-    const batchSize = 4;
+    const isTestEnv =
+      (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+      (typeof window !== 'undefined' && (window as any).__NEXT_UNLOCK_TEST_HARNESS__);
 
-    for (let i = 0; i < games.length; i += batchSize) {
-      const batch = games.slice(i, i + batchSize);
-      await Promise.all(
-        batch.map(async (g) => {
-          try {
-            const det = await this.getGameDetails(g.appid, forceRefresh);
-            resultsByAppId.set(g.appid, det.game);
-          } catch {
-            resultsByAppId.set(g.appid, g);
-          } finally {
+    for (const g of games) {
+      let didNetwork = false;
+      try {
+        if (!forceRefresh) {
+          const cached = this.getCachedGameDetailsSync(g.appid);
+          if (cached && cached.game.total_achievements > 0) {
+            resultsByAppId.set(g.appid, cached.game);
             completed += 1;
             onProgress?.(completed, total);
+            continue;
           }
-        })
-      );
+        }
+        didNetwork = true;
+        const det = await this.fetchAndCacheGameDetails(g.appid, forceRefresh, true);
+        resultsByAppId.set(g.appid, det.game);
+      } catch {
+        resultsByAppId.set(g.appid, g);
+      } finally {
+        completed += 1;
+        onProgress?.(completed, total);
+      }
+      // Polite delay between uncached network calls so Steam Community never 429 rate-limits
+      if (didNetwork && !isTestEnv && completed < total) {
+        await new Promise((r) => setTimeout(r, 250));
+      }
     }
 
     return games.map((g) => resultsByAppId.get(g.appid) || g);
@@ -748,16 +760,20 @@ export class SteamApiService {
     appid: number
   ): Promise<{
     nativeAchievements: any[] | null;
+    nativeTotal: number;
+    nativeUnlocked: number;
     userUnlockMap: Record<string, { unlocked: boolean; unlock_time?: number | null; progress?: ProgressInfo }>;
   }> {
     let nativeAchievements: any[] | null = null;
+    let nativeTotal = 0;
+    let nativeUnlocked = 0;
     const userUnlockMap: Record<
       string,
       { unlocked: boolean; unlock_time?: number | null; progress?: ProgressInfo }
     > = {};
 
     if (typeof window === 'undefined') {
-      return { nativeAchievements, userUnlockMap };
+      return { nativeAchievements, nativeTotal, nativeUnlocked, userUnlockMap };
     }
 
     const w = window as any;
@@ -799,6 +815,10 @@ export class SteamApiService {
         w.appDetailsStore?.GetAppDetails?.(appid)?.achievements;
       if (storeAch) {
         const inner = storeAch.data || storeAch;
+        const nTotal = Number(inner.nTotal) || 0;
+        const nAchieved = Number(inner.nAchieved) || 0;
+        if (nTotal > nativeTotal) nativeTotal = nTotal;
+        if (nAchieved > nativeUnlocked) nativeUnlocked = nAchieved;
         if (Array.isArray(inner.rgAchievements)) ingestList(inner.rgAchievements);
         if (Array.isArray(inner.vecHighlight)) {
           ingestList(inner.vecHighlight.map((x: any) => ({ ...x, bAchieved: true })));
@@ -837,12 +857,13 @@ export class SteamApiService {
       }
     }
 
-    return { nativeAchievements, userUnlockMap };
+    return { nativeAchievements, nativeTotal, nativeUnlocked, userUnlockMap };
   }
 
   private static async fetchAndCacheGameDetails(
     appid: number,
-    forceRefresh = false
+    forceRefresh = false,
+    backgroundSync = false
   ): Promise<{ game: Game; ranked: RankedAchievements }> {
     const now = Date.now();
     const callFn = await getCallFn();
@@ -854,7 +875,11 @@ export class SteamApiService {
         if (!callFn) return null;
         try {
           const res = await withTimeout(
-            forceRefresh ? callFn('get_game_details', appid, true) : callFn('get_game_details', appid),
+            backgroundSync
+              ? callFn('get_game_details', appid, forceRefresh, true)
+              : forceRefresh
+              ? callFn('get_game_details', appid, true)
+              : callFn('get_game_details', appid),
             20000,
             null
           );
@@ -869,7 +894,7 @@ export class SteamApiService {
       })(),
     ]);
 
-    const { nativeAchievements, userUnlockMap } = nativeRes;
+    const { nativeAchievements, nativeTotal, nativeUnlocked, userUnlockMap } = nativeRes;
 
     // 3. Merge live native user unlock state with backend data
     if (backendDetails && backendDetails.game && backendDetails.game.achievements.length > 0) {
@@ -909,8 +934,11 @@ export class SteamApiService {
 
       const ranked = rankAchievements(achievements, this.pinnedIds);
       const allSorted = [...ranked.locked, ...ranked.unlocked];
-      const total = allSorted.length;
-      const unlockedCount = ranked.unlocked.length;
+      const total = Math.max(allSorted.length, backendDetails.game.total_achievements || 0, nativeTotal);
+      const unlockedCount = Math.min(
+        total,
+        Math.max(ranked.unlocked.length, backendDetails.game.unlocked_count || 0, nativeUnlocked)
+      );
       const pct = total > 0 ? Math.round((unlockedCount / total) * 1000) / 10 : 0;
 
       const mergedGame: Game = {
@@ -924,17 +952,19 @@ export class SteamApiService {
       };
 
       const result = { game: mergedGame, ranked };
-      this.cacheResult(appid, result, now);
+      if (allSorted.length >= total) {
+        this.cacheResult(appid, result, now);
+      }
       return result;
     }
 
-    // 4. If only native SteamClient was available, build directly from it
+    // 4. If only native SteamClient was available, build directly from it (never clamping nTotal down to 12 highlights)
     if (nativeAchievements && nativeAchievements.length > 0) {
       const achievements = nativeAchievements.map((a: any) => formatSteamAchievement(a, appid));
       const ranked = rankAchievements(achievements, this.pinnedIds);
       const allSorted = [...ranked.locked, ...ranked.unlocked];
-      const total = allSorted.length;
-      const unlockedCount = ranked.unlocked.length;
+      const total = Math.max(allSorted.length, nativeTotal);
+      const unlockedCount = Math.min(total, Math.max(ranked.unlocked.length, nativeUnlocked));
       const pct = total > 0 ? Math.round((unlockedCount / total) * 1000) / 10 : 0;
       const active = await getActiveAppAsync();
       const knownGame = _cachedGames?.data.find((g) => g.appid === appid);
@@ -951,7 +981,9 @@ export class SteamApiService {
       };
 
       const result = { game, ranked };
-      this.cacheResult(appid, result, now);
+      if (allSorted.length >= total) {
+        this.cacheResult(appid, result, now);
+      }
       return result;
     }
 
@@ -1006,7 +1038,9 @@ export class SteamApiService {
         unlocked: [],
       },
     };
-    this.cacheResult(appid, emptyResult, now);
+    if (backendDetails) {
+      this.cacheResult(appid, emptyResult, now);
+    }
     return emptyResult;
   }
 

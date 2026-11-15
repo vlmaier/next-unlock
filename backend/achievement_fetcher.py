@@ -512,6 +512,7 @@ def parse_steam_community_html(content: str) -> ParsedCommunityHtmlResult:
 def fetch_achievements_from_steam(
     appid: int,
     force_refresh: bool = False,
+    allow_missables_network: bool = True,
 ) -> FetchedAchievementsEnvelope:
     """
     Fetches public achievement list, names, descriptions, icons, and unlock percentages
@@ -582,7 +583,7 @@ def fetch_achievements_from_steam(
             achievements = enrich_achievements_with_missables(
                 appid_int,
                 achievements,
-                allow_network=True,
+                allow_network=allow_missables_network,
             )
             computed_sets = compute_achievement_sets(achievements, raw_sets)
             save_cached_achievements(
