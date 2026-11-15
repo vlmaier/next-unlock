@@ -1,3 +1,10 @@
+## [2.5.3](https://github.com/vlmaier/next-unlock/compare/v2.5.2...v2.5.3) (2026-11-15)
+
+
+### Bug Fixes
+
+* restore original v2.4.1 Full Dashboard and achievement card navigation ([9ceeafa](https://github.com/vlmaier/next-unlock/commit/9ceeafa7abd929c2d26dd55145ecfd53b36e713d))
+
 ## [2.5.2](https://github.com/vlmaier/next-unlock/compare/v2.5.1...v2.5.2) (2026-11-15)
 
 
