@@ -228,31 +228,28 @@ const HarnessApp: React.FC = () => {
       <main key={mountKey} className="flex-1 flex items-center justify-center p-4 overflow-auto">
         <div
           data-testid="steam-deck-screen"
-          className="w-[1280px] h-[800px] max-w-full bg-[#090d12] border border-[#2e3d52] rounded-2xl shadow-2xl overflow-hidden flex flex-col relative"
+          className="w-[1280px] h-[800px] max-w-full bg-[#0e141b] border border-[#2e3d52] rounded-2xl shadow-2xl overflow-hidden flex flex-col relative"
         >
-          {/* SteamOS Top Status Bar (40px) */}
+          {/* SteamOS Floating Top Status Overlay (40px, exact Deck Gaming Mode position) */}
           <div
             data-testid="steamos-native-topbar"
-            className="w-full h-[40px] flex-shrink-0 bg-[#0b1016]/95 border-b border-[#2e3d52]/60 px-5 flex items-center justify-between text-xs text-slate-200 font-semibold z-30"
+            className="w-full h-[40px] px-5 flex items-center justify-end gap-3 text-xs text-slate-200 font-semibold absolute top-0 left-0 right-0 z-30 pointer-events-none"
           >
-            <span className="text-slate-400 font-bold tracking-wider">STEAM OS (1280×800)</span>
-            <div className="flex items-center gap-3">
-              <span className="text-slate-300">Wi-Fi</span>
-              <span className="flex items-center gap-1">
-                <span>93%</span>
-                <span className="inline-block w-4 h-2.5 rounded-sm bg-emerald-400 border border-emerald-200" />
-              </span>
-              <span>13:37</span>
-              <span className="w-6 h-6 rounded-full bg-[#389fff] text-white flex items-center justify-center text-[10px] font-bold">
-                D
-              </span>
-            </div>
+            <span className="text-slate-300">Wi-Fi</span>
+            <span className="flex items-center gap-1">
+              <span>92%</span>
+              <span className="inline-block w-4 h-2.5 rounded-sm bg-emerald-400 border border-emerald-200" />
+            </span>
+            <span>13:40</span>
+            <span className="w-6 h-6 rounded-full bg-[#389fff] text-white flex items-center justify-center text-[10px] font-bold">
+              D
+            </span>
           </div>
 
           {/* Screen Body */}
           <div className="flex-1 relative overflow-hidden flex">
             {viewMode === 'dashboard' ? (
-              <div className="w-full h-full overflow-y-auto">
+              <div className="w-full h-full overflow-hidden flex flex-col [&>div]:!h-full">
                 <FullDashboardPage />
               </div>
             ) : (
@@ -265,7 +262,7 @@ const HarnessApp: React.FC = () => {
                 {/* Exact Steam Deck QAM Panel: 340px total (48px icon rail + 292px Decky pane) */}
                 <aside
                   data-testid="steamos-qam-drawer"
-                  className="w-[340px] h-full flex-shrink-0 bg-[#1a222d]/95 border-l border-[#2e3d52] flex shadow-2xl"
+                  className="w-[340px] h-full pt-[40px] pb-[36px] flex-shrink-0 bg-[#1a222d]/95 border-l border-[#2e3d52] flex shadow-2xl"
                 >
                   {/* Left 48px SteamOS QAM Icon Rail */}
                   <div className="w-[48px] flex-shrink-0 bg-[#141b24] border-r border-[#2a384b] flex flex-col items-center py-3 gap-4 text-slate-400 text-xs">
@@ -297,20 +294,28 @@ const HarnessApp: React.FC = () => {
             )}
           </div>
 
-          {/* SteamOS Bottom Footer Bar (36px) */}
-          <div className="w-full h-[36px] flex-shrink-0 bg-[#0b1016]/95 border-t border-[#2e3d52]/60 px-5 flex items-center justify-end gap-5 text-[11px] font-semibold text-slate-300 z-30">
-            <span>
-              <span className="inline-block px-1.5 py-0.2 rounded-full bg-slate-200 text-[#0b1016] font-bold mr-1">
-                A
+          {/* SteamOS Floating Bottom Footer Overlay (36px) */}
+          <div className="w-full h-[36px] px-5 flex items-center justify-between text-[11px] font-semibold text-slate-300 bg-[#0b1016]/85 backdrop-blur-sm border-t border-[#2e3d52]/40 absolute bottom-0 left-0 right-0 z-30 pointer-events-none">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-full bg-slate-200 text-[#0b1016] font-extrabold text-[10px]">
+                STEAM
               </span>
-              SELECT
-            </span>
-            <span>
-              <span className="inline-block px-1.5 py-0.2 rounded-full bg-slate-200 text-[#0b1016] font-bold mr-1">
-                B
+              <span className="text-slate-300">MENU</span>
+            </div>
+            <div className="flex items-center gap-5">
+              <span>
+                <span className="inline-block px-1.5 py-0.2 rounded-full bg-slate-200 text-[#0b1016] font-bold mr-1">
+                  A
+                </span>
+                SELECT
               </span>
-              BACK
-            </span>
+              <span>
+                <span className="inline-block px-1.5 py-0.2 rounded-full bg-slate-200 text-[#0b1016] font-bold mr-1">
+                  B
+                </span>
+                BACK
+              </span>
+            </div>
           </div>
         </div>
       </main>

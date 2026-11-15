@@ -219,14 +219,17 @@ export const FullDashboardPage: React.FC = () => {
       data-theme="steam_slate"
       style={{
         width: '100%',
-        minHeight: '100vh',
+        height: '100vh',
         backgroundColor: '#0e141b',
         color: '#f1f5f9',
         paddingTop: '48px',
-        overflowY: 'auto',
+        paddingBottom: '40px',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
         boxSizing: 'border-box',
       }}
-      className="w-full min-h-screen bg-[#0e141b] text-slate-100 pt-12 overflow-y-auto font-sans"
+      className="w-full h-screen bg-[#0e141b] text-slate-100 flex flex-col overflow-hidden font-sans"
     >
       <style dangerouslySetInnerHTML={{ __html: typeof cssText === 'string' ? cssText : '' }} />
       {loading && !selectedGame && games.length === 0 ? (

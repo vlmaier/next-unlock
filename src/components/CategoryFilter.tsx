@@ -46,7 +46,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             onActivate={() => onSelectCategory(cat.id)}
             onClick={() => onSelectCategory(cat.id)}
             data-testid={`category-tab-${cat.id}`}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all duration-150 border flex-shrink-0 cursor-pointer focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all duration-150 border flex-shrink-0 cursor-pointer focus:outline-none ${
               isActive
                 ? 'bg-[#389fff] text-white border-[#389fff] shadow-sm'
                 : 'bg-[#161f2c] text-slate-300 hover:text-white hover:bg-[#1e293b] border-[#2e3d52]'

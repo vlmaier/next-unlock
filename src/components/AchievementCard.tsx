@@ -84,7 +84,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
       onActivate={handleCardActivate}
       onClick={handleCardActivate}
       data-testid={`achievement-card-${achievement.id}`}
-      className={`next-card p-3.5 flex flex-col justify-between gap-3 relative focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+      className={`next-card p-3.5 flex flex-col justify-between gap-3 relative focus:outline-none ${
         achievement.is_pinned
           ? 'border-[#eab308]/80 bg-[#1e293b]'
           : achievement.unlocked

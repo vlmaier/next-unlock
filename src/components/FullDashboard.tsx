@@ -369,9 +369,9 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col gap-5 p-4 md:p-6">
-      {/* Unified SteamOS Top Header Bar */}
-      <div className="flex items-center justify-between gap-3 border-b border-[#2e3d52] pb-3.5">
+    <div className="w-full max-w-5xl mx-auto flex-1 min-h-0 flex flex-col px-4 md:px-6 pt-2 pb-1 overflow-hidden">
+      {/* Pinned SteamOS Top Header Bar */}
+      <div className="flex-shrink-0 flex items-center justify-between gap-3 border-b border-[#2e3d52] pb-3">
         <div className="flex items-center gap-2.5">
           <div className="bg-[#161f2c] p-2 rounded-lg border border-[#2e3d52]">
             <Trophy className="w-5 h-5 text-[#389fff]" />
@@ -406,7 +406,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
               onActivate={onRefresh}
               onClick={onRefresh}
               data-testid="dashboard-refresh-btn"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#161f2c] hover:bg-[#1e293b] text-slate-200 hover:text-white rounded-lg border border-[#2e3d52] text-xs font-bold transition-all cursor-pointer focus:ring-2 focus:ring-[#389fff] focus:outline-none"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#161f2c] hover:bg-[#1e293b] text-slate-200 hover:text-white rounded-lg border border-[#2e3d52] text-xs font-bold transition-all cursor-pointer focus:outline-none"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#389fff]' : ''}`} />
               <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
@@ -418,7 +418,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
               onActivate={onBack}
               onClick={onBack}
               data-testid="dashboard-back-btn"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#161f2c] hover:bg-[#1e293b] text-slate-200 hover:text-white rounded-lg border border-[#2e3d52] text-xs font-bold transition-all cursor-pointer focus:ring-2 focus:ring-[#389fff] focus:outline-none"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#161f2c] hover:bg-[#1e293b] text-slate-200 hover:text-white rounded-lg border border-[#2e3d52] text-xs font-bold transition-all cursor-pointer focus:outline-none"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back</span>
@@ -427,7 +427,9 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
         </Focusable>
       </div>
 
-      {/* Game Selector Pills Bar */}
+      {/* Scrollable Content Area (stays cleanly below SteamOS top bar & pinned header) */}
+      <div className="flex-1 min-h-0 overflow-y-auto pt-4 pb-4 flex flex-col gap-5 pr-1">
+        {/* Game Selector Pills Bar */}
       {games.length > 0 && (
         <GameSelector games={games} selectedAppId={selectedAppId} onSelectGame={onSelectGame} />
       )}
@@ -583,7 +585,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
                   onActivate={() => handleSelectRibbonTarget(item)}
                   onClick={() => handleSelectRibbonTarget(item)}
                   data-testid={`ribbon-advisor-${item.key}`}
-                  className="px-3 py-2 rounded-lg bg-[#0e141b] hover:bg-[#1e293b] border border-[#2e3d52] hover:border-[#389fff]/60 flex items-center justify-between gap-2.5 transition-all cursor-pointer focus:ring-2 focus:ring-[#389fff] focus:outline-none"
+                  className="px-3 py-2 rounded-lg bg-[#0e141b] hover:bg-[#1e293b] border border-[#2e3d52] hover:border-[#389fff]/60 flex items-center justify-between gap-2.5 transition-all cursor-pointer focus:outline-none"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <RibbonThumbnail
@@ -630,7 +632,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
                 onActivate={() => setActiveSetId('all')}
                 onClick={() => setActiveSetId('all')}
                 data-testid="achievement-set-all"
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer flex-shrink-0 focus:outline-none ${
                   activeSetId === 'all'
                     ? 'bg-[#389fff] text-[#0e141b] border-[#389fff]'
                     : 'bg-[#0e141b] text-slate-200 border-[#2e3d52] hover:border-slate-500'
@@ -661,7 +663,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
                     onActivate={() => setActiveSetId(setItem.id)}
                     onClick={() => setActiveSetId(setItem.id)}
                     data-testid={`achievement-set-${setItem.id}`}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer flex-shrink-0 focus:outline-none ${
                       isSelected
                         ? 'bg-[#389fff] text-[#0e141b] border-[#389fff]'
                         : isSetComplete
@@ -748,7 +750,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
                 onActivate={() => setOnlyMissable((prev) => !prev)}
                 onClick={() => setOnlyMissable((prev) => !prev)}
                 data-testid="toggle-missable-only-btn"
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer flex-shrink-0 focus:outline-none ${
                   onlyMissable
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
                     : 'bg-[#161f2c] text-amber-300/90 border-[#2e3d52] hover:border-amber-500/40'
@@ -764,7 +766,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
                 onActivate={() => setRevealAllSecrets((prev) => !prev)}
                 onClick={() => setRevealAllSecrets((prev) => !prev)}
                 data-testid="toggle-reveal-secrets-btn"
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer flex-shrink-0 focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer flex-shrink-0 focus:outline-none ${
                   revealAllSecrets
                     ? 'bg-[#389fff]/15 text-[#389fff] border-[#389fff]/40'
                     : 'bg-[#161f2c] text-slate-300 border-[#2e3d52] hover:border-slate-500'
@@ -822,6 +824,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
           ))}
         </Focusable>
       )}
+      </div>
     </div>
   );
 };

@@ -93,53 +93,49 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
   return (
     <div className="flex flex-col gap-1">
       <PanelSection title={game ? game.name : 'Installed Library'}>
-        {/* Game Selector Dropdown is ALWAYS visible if any installed games exist */}
-        {games.length > 0 && onSelectGame && (
-          <PanelSectionRow>
-            <Dropdown
-              ariaLabel="Game"
-              menuLabel="Choose Game"
-              rgOptions={games.map((g) => ({
-                data: g.appid,
-                label:
-                  g.total_achievements > 0
-                    ? `${truncateQamLabel(g.name, 26)} (${Math.round(g.completion_percentage)}%)`
-                    : truncateQamLabel(g.name, 30),
-              }))}
-              selectedOption={game?.appid ?? games[0].appid}
-              onChange={(opt: SingleDropdownOption) => onSelectGame(Number(opt.data))}
-            />
-          </PanelSectionRow>
-        )}
+        <PanelSectionRow>
+          <div className="w-full flex flex-col gap-2.5">
+            {/* Game Selector Dropdown is ALWAYS visible if any installed games exist */}
+            {games.length > 0 && onSelectGame && (
+              <Dropdown
+                ariaLabel="Game"
+                menuLabel="Choose Game"
+                rgOptions={games.map((g) => ({
+                  data: g.appid,
+                  label:
+                    g.total_achievements > 0
+                      ? `${truncateQamLabel(g.name, 26)} (${Math.round(g.completion_percentage)}%)`
+                      : truncateQamLabel(g.name, 30),
+                }))}
+                selectedOption={game?.appid ?? games[0].appid}
+                onChange={(opt: SingleDropdownOption) => onSelectGame(Number(opt.data))}
+              />
+            )}
 
-        {/* Steam Achievement Set Selector (when game defines multiple sets) */}
-        {game && achievementSets.length > 1 && (
-          <PanelSectionRow>
-            <Dropdown
-              ariaLabel="Set"
-              menuLabel="Choose Achievement Set"
-              rgOptions={[
-                {
-                  data: 'all',
-                  label: `All (${game.unlocked_count}/${game.total_achievements})`,
-                },
-                ...achievementSets.map((s) => ({
-                  data: s.id,
-                  label: `${truncateQamLabel(s.name, 22)}${s.dlc_appid ? ' [DLC]' : ''} (${s.unlocked_count}/${s.total_achievements})`,
-                })),
-              ]}
-              selectedOption={selectedSetId}
-              onChange={(opt: SingleDropdownOption) =>
-                setSelectedSetId(opt.data === 'all' ? 'all' : Number(opt.data))
-              }
-            />
-          </PanelSectionRow>
-        )}
+            {/* Steam Achievement Set Selector (when game defines multiple sets) */}
+            {game && achievementSets.length > 1 && (
+              <Dropdown
+                ariaLabel="Set"
+                menuLabel="Choose Achievement Set"
+                rgOptions={[
+                  {
+                    data: 'all',
+                    label: `All (${game.unlocked_count}/${game.total_achievements})`,
+                  },
+                  ...achievementSets.map((s) => ({
+                    data: s.id,
+                    label: `${truncateQamLabel(s.name, 22)}${s.dlc_appid ? ' [DLC]' : ''} (${s.unlocked_count}/${s.total_achievements})`,
+                  })),
+                ]}
+                selectedOption={selectedSetId}
+                onChange={(opt: SingleDropdownOption) =>
+                  setSelectedSetId(opt.data === 'all' ? 'all' : Number(opt.data))
+                }
+              />
+            )}
 
-        {/* Header Progress Bar or Status */}
-        {game && hasAchievements ? (
-          <>
-            <PanelSectionRow>
+            {/* Header Progress Bar or Status */}
+            {game && hasAchievements && (
               <div
                 data-testid="qam-progress-bar"
                 className="w-full max-w-full overflow-hidden flex flex-col gap-1.5 py-1.5 px-2.5 bg-[#1e293b]/70 rounded-lg border border-[#2a384b] box-border"
@@ -163,7 +159,12 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
                   />
                 </div>
               </div>
-            </PanelSectionRow>
+            )}
+          </div>
+        </PanelSectionRow>
+
+        {game && hasAchievements ? (
+          <>
             {syncStatus && syncStatus.total > 0 && (
               <PanelSectionRow>
                 <div className="w-full text-[10px] text-[#389fff] font-semibold px-1 truncate">

@@ -26,7 +26,7 @@ export const GameSelector: React.FC<GameSelectorProps> = ({
         onActivate={() => onSelectGame('all')}
         onClick={() => onSelectGame('all')}
         data-testid="game-pill-all"
-        className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border cursor-pointer focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+        className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border cursor-pointer focus:outline-none ${
           isAllSelected
             ? 'bg-[#389fff] text-white border-[#389fff] shadow-sm'
             : 'bg-[#161f2c] text-slate-300 border-[#2e3d52] hover:text-white hover:bg-[#1e293b]'
@@ -49,7 +49,7 @@ export const GameSelector: React.FC<GameSelectorProps> = ({
             onActivate={() => onSelectGame(game.appid)}
             onClick={() => onSelectGame(game.appid)}
             data-testid={`game-pill-${game.appid}`}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border cursor-pointer focus:ring-2 focus:ring-[#389fff] focus:outline-none ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border cursor-pointer focus:outline-none ${
               isSelected
                 ? 'bg-[#389fff] text-white border-[#389fff] shadow-sm'
                 : 'bg-[#161f2c] text-slate-300 border-[#2e3d52] hover:text-white hover:bg-[#1e293b]'
