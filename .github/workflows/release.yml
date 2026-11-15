@@ -1,35 +1,27 @@
-name: Verify, Package & Semantic Release
+name: CI & Release
 
 on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
   pull_request:
     branches:
       - main
   workflow_dispatch:
 
 jobs:
-  verify-and-release:
+  ci:
+    name: CI
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
 
-      - name: Install just
+      - name: Setup just
         uses: extractions/setup-just@v2
 
-      - name: Install pnpm
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 12
@@ -40,7 +32,7 @@ jobs:
           node-version: 24
           cache: 'pnpm'
 
-      - name: Install Astral uv
+      - name: Setup Python (uv)
         uses: astral-sh/setup-uv@v5
         with:
           python-version: '3.12'
@@ -48,17 +40,67 @@ jobs:
       - name: Install Dependencies
         run: just setup
 
-      - name: Run Mandatory Quality Gate (just verify)
-        run: just verify
+      - name: Lint
+        run: just lint
 
-      - name: Upload Build Artifact
+      - name: Typecheck
+        run: just typecheck
+
+      - name: Test Backend (pytest)
+        run: just test-py
+
+      - name: Test Frontend & E2E (vitest)
+        run: just test-ts
+
+      - name: Build & Verify Package
+        run: just package
+
+      - name: Upload Package Artifact
         uses: actions/upload-artifact@v4
         with:
           name: next-unlock-zip
           path: next-unlock.zip
 
-      - name: Run Semantic Release (Automated Versioning & GitHub Release on main)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  release:
+    name: Release
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup just
+        uses: extractions/setup-just@v2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Setup Python (uv)
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Dependencies
+        run: just setup
+
+      - name: Semantic Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -71,15 +113,3 @@ jobs:
             -p @semantic-release/git \
             -p @semantic-release/github \
             semantic-release
-
-      - name: Upload Release Asset (Manual Tag Fallback)
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/v')
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: next-unlock.zip
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true

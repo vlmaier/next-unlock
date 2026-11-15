@@ -7,8 +7,9 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc --noEmit",
+    "build:css": "tailwindcss -i ./src/index.css -o ./src/generated.css",
     "build": "tailwindcss -i ./src/index.css -o ./src/generated.css && tsc --noEmit && rollup -c",
-    "test": "vitest run",
+    "test": "tailwindcss -i ./src/index.css -o ./src/generated.css && vitest run",
     "test:python": "uv run pytest",
     "smoke": "node scripts/smoke_test_bundle.mjs",
     "verify": "just verify",
