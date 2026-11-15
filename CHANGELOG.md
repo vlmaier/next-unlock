@@ -1,3 +1,11 @@
+## [2.4.1](https://github.com/vlmaier/next-unlock/compare/v2.4.0...v2.4.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* increase get_game_details RPC timeout to 20s so cold Steam fetches with DLCs and hash headers complete ([219d95d](https://github.com/vlmaier/next-unlock/commit/219d95d741ca27840fce975bd485c9a09d579def))
+* match Focusable focus ring to exact button/card shape and prevent guide language mismatch ([301bd6e](https://github.com/vlmaier/next-unlock/commit/301bd6ee3333a93097103f44fa2e5eb339a5da63))
+
 # [2.4.0](https://github.com/vlmaier/next-unlock/compare/v2.3.6...v2.4.0) (2026-11-15)
 
 
