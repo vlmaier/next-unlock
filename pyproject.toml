@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "next-unlock-backend"
-version = "2.3.2"
+version = "2.3.3"
 description = "Backend logic and VDF parser for Next Unlock Steam Deck Plugin"
 readme = "README.md"
 requires-python = ">=3.10"

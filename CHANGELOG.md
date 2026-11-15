@@ -1,3 +1,10 @@
+## [2.3.3](https://github.com/vlmaier/next-unlock/compare/v2.3.2...v2.3.3) (2026-11-15)
+
+
+### Bug Fixes
+
+* replace recursive SD-card mount globs with shallow globs so get_games never times out ([8edc1e1](https://github.com/vlmaier/next-unlock/commit/8edc1e1c687db3ffd54085238954e993e9ef1edc))
+
 ## [2.3.2](https://github.com/vlmaier/next-unlock/compare/v2.3.1...v2.3.2) (2026-11-15)
 
 
