@@ -98,11 +98,16 @@ export function getGameHeaderUrl(appid: number, providedUrl?: string): string {
 }
 
 export function getAchievementGuideUrl(appid: number | undefined, achievementName: string): string {
-  const query = encodeURIComponent(achievementName.trim());
+  const trimmed = achievementName.trim();
+  const query = encodeURIComponent(trimmed);
+  // Only force English guide tag when the query itself is ASCII/English;
+  // if a local non-English fallback title was used, omit language tag so search still finds guides.
+  const hasNonAscii = /[^\x20-\x7E]/.test(trimmed);
+  const langParams = hasNonAscii ? '' : '&requiredtags%5B%5D=English&l=english';
   if (appid && appid > 0) {
-    return `https://steamcommunity.com/app/${appid}/guides/?searchText=${query}&browsesort=toprated&browsefilter=toprated&requiredtags%5B%5D=English&l=english`;
+    return `https://steamcommunity.com/app/${appid}/guides/?searchText=${query}&browsesort=toprated&browsefilter=toprated${langParams}`;
   }
-  return `https://steamcommunity.com/workshop/browse/?searchtext=${query}&section=guides&requiredtags%5B%5D=English&l=english`;
+  return `https://steamcommunity.com/workshop/browse/?searchtext=${query}&section=guides${langParams}`;
 }
 
 export function openAchievementGuide(appid: number | undefined, achievementName: string): string {
@@ -850,7 +855,7 @@ export class SteamApiService {
         try {
           const res = await withTimeout(
             forceRefresh ? callFn('get_game_details', appid, true) : callFn('get_game_details', appid),
-            5000,
+            12000,
             null
           );
           const data = res && res.result !== undefined ? res.result : res;

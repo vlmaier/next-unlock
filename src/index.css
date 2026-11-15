@@ -74,13 +74,14 @@ body,
   border-color: #475974;
 }
 
-/* SteamOS Controller Focus Ring */
+/* SteamOS Controller Focus Ring (matches exact element border-radius & dimensions) */
+.next-gpfocus,
 .next-card:focus-visible,
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 12px rgba(56, 159, 255, 0.55) !important;
 }
 
 .progress-ring-circle {

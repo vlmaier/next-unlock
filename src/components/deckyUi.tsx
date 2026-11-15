@@ -261,9 +261,12 @@ export interface FocusableProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Focusable: React.FC<FocusableProps> = (props) => {
   const Real = getDFL().Focusable;
   if (Real) {
-    // Ensure both gamepad onActivate and pointer onClick work seamlessly in SteamOS CEF
+    // Disable Valve's mismatched rectangular focus ring on custom-rounded buttons/cards
+    // and apply `.next-gpfocus` so focus highlight matches exact element size & border-radius.
     const mergedProps = {
       ...props,
+      noFocusRing: props.noFocusRing ?? (props.focusable ? true : undefined),
+      focusClassName: props.focusable ? props.focusClassName || 'next-gpfocus' : props.focusClassName,
       onClick: props.onClick || props.onActivate,
     };
     return <Real {...mergedProps} />;
