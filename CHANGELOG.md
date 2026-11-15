@@ -1,3 +1,10 @@
+## [2.5.4](https://github.com/vlmaier/next-unlock/compare/v2.5.3...v2.5.4) (2026-11-15)
+
+
+### Bug Fixes
+
+* remove full library background sync, fix missables English guide parsing and header images ([c5a7e72](https://github.com/vlmaier/next-unlock/commit/c5a7e7249ffd1bcd206e20217da42d3cce859d64))
+
 ## [2.5.3](https://github.com/vlmaier/next-unlock/compare/v2.5.2...v2.5.3) (2026-11-15)
 
 
