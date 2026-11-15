@@ -1,3 +1,10 @@
+## [2.3.4](https://github.com/vlmaier/next-unlock/compare/v2.3.3...v2.3.4) (2026-11-15)
+
+
+### Bug Fixes
+
+* use full-width QAM dropdowns and exact 1280x800 Steam Deck emulator layout ([99e06e2](https://github.com/vlmaier/next-unlock/commit/99e06e27268e9c2918164266c9e9b2d8f794f6c7))
+
 ## [2.3.3](https://github.com/vlmaier/next-unlock/compare/v2.3.2...v2.3.3) (2026-11-15)
 
 
