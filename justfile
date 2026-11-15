@@ -1,7 +1,7 @@
 # Next Unlock — SDLC Task Runner (justfile)
 # Uses Astral Python toolchain (uv, ruff, ty, pytest) + pnpm (TypeScript, Vitest, Rollup)
 
-set shell := ["zsh", "-cu"]
+set shell := ["sh", "-cu"]
 export PATH := env_var("HOME") + "/.local/bin:/opt/homebrew/bin:" + env_var("PATH")
 
 default:
@@ -9,7 +9,7 @@ default:
 
 # Install / sync both Node (pnpm) and Python (uv) dependencies
 setup:
-    pnpm install --frozen-lockfile
+    pnpm install --no-frozen-lockfile
     uv sync
 
 # Start full-stack SteamOS / Decky local emulator (Vite + live Python main.py RPC bridge)
