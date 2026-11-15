@@ -187,17 +187,16 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
             </div>
 
             {canOpenGuide && (
-              <Focusable
-                focusable={true}
-                onActivate={handleOpenGuide}
+              <button
+                type="button"
                 onClick={handleOpenGuide}
                 data-testid={`guide-btn-${achievement.id}`}
-                title={`Open top-rated Steam Community Guides for "${achievement.name}" (or press X)`}
-                className="px-2 py-0.5 rounded bg-[#161f2c] hover:bg-[#263449] text-slate-300 hover:text-[#389fff] border border-[#2e3d52] hover:border-[#389fff]/50 text-[10px] font-bold flex items-center gap-1 transition-colors flex-shrink-0 cursor-pointer focus:outline-none"
+                title={`Open top-rated Steam Community Guides for "${achievement.name}" (press X)`}
+                className="px-2 py-0.5 rounded bg-[#161f2c] hover:bg-[#263449] text-slate-300 hover:text-[#389fff] border border-[#2e3d52] hover:border-[#389fff]/50 text-[10px] font-bold flex items-center gap-1 transition-colors flex-shrink-0 cursor-pointer"
               >
                 <BookOpen className="w-3 h-3 text-[#389fff]" />
-                <span>Guide</span>
-              </Focusable>
+                <span>X · Guide</span>
+              </button>
             )}
           </div>
         </div>

@@ -398,11 +398,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
   };
 
   return (
-    <Focusable
-      flow-children="column"
-      onButtonDown={handleGamepadButtonDown}
-      className="w-full max-w-5xl mx-auto flex-1 min-h-0 flex flex-col px-4 md:px-6 pt-2 pb-1 overflow-hidden"
-    >
+    <div className="w-full max-w-5xl mx-auto flex-1 min-h-0 flex flex-col px-4 md:px-6 pt-2 pb-1 overflow-hidden">
       {/* Pinned SteamOS Top Header Bar */}
       <div className="flex-shrink-0 flex items-center justify-between gap-3 border-b border-[#2e3d52] pb-3">
         <div className="flex items-center gap-2.5">
@@ -845,7 +841,11 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
           </p>
         </div>
       ) : (
-        <Focusable flow-children="grid" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Focusable
+          flow-children="grid"
+          onButtonDown={handleGamepadButtonDown}
+          className="grid grid-cols-1 md:grid-cols-2 gap-3"
+        >
           {filteredAchievements.map((ach) => (
             <AchievementCard
               key={`${ach.appid || selectedGame?.appid || 'g'}-${ach.id}`}
@@ -858,6 +858,6 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
         </Focusable>
       )}
       </div>
-    </Focusable>
+    </div>
   );
 };
