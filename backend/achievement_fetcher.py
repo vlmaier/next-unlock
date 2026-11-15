@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import ssl
+import tempfile
 import time
 import urllib.request
 from collections.abc import Iterable, Mapping
@@ -187,8 +188,20 @@ def save_cached_achievements(
         }
         if header_image:
             payload["header_image"] = header_image
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(payload, f)
+        fd, tmp_path = tempfile.mkstemp(
+            dir=cache_dir,
+            prefix=f".tmp_achievements_{int(appid)}_",
+            suffix=".json",
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(payload, f)
+                f.flush()
+            os.replace(tmp_path, path)
+        except Exception:
+            with contextlib.suppress(OSError):
+                os.unlink(tmp_path)
+            raise
     except Exception as e:
         logger.debug(f"Failed saving cache for appid {appid}: {e}")
 

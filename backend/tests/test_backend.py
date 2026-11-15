@@ -733,6 +733,31 @@ class TestBackendSuite(unittest.TestCase):
             self.assertEqual(len(refreshed["achievements"]), 2)
             self.assertIsNotNone(refreshed["header_image"])
 
+        # 4. Concurrent atomic cache writes never corrupt JSON or leave temp files
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _write_once(_i: int) -> None:
+            save_cached_achievements(
+                2062430,
+                parsed["achievements"],
+                game_title="BALL x PIT",
+                header_image=parsed["header_image"],
+            )
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(_write_once, range(16)))
+
+        loaded = load_cached_achievements(2062430)
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        self.assertEqual(len(loaded["achievements"]), 2)
+        leftover_tmps = [
+            name
+            for name in os.listdir(os.path.dirname(cache_file))
+            if name.startswith(".tmp_achievements_")
+        ]
+        self.assertEqual(leftover_tmps, [])
+
 
 if __name__ == "__main__":
     unittest.main()
