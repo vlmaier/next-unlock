@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   PanelSection,
   PanelSectionRow,
-  DropdownItem,
+  Dropdown,
   Field,
   ButtonItem,
   SingleDropdownOption,
@@ -96,15 +96,15 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
         {/* Game Selector Dropdown is ALWAYS visible if any installed games exist */}
         {games.length > 0 && onSelectGame && (
           <PanelSectionRow>
-            <DropdownItem
-              label="Game"
+            <Dropdown
+              ariaLabel="Game"
               menuLabel="Choose Game"
               rgOptions={games.map((g) => ({
                 data: g.appid,
                 label:
                   g.total_achievements > 0
-                    ? `${truncateQamLabel(g.name, 20)} (${Math.round(g.completion_percentage)}%)`
-                    : truncateQamLabel(g.name, 25),
+                    ? `${truncateQamLabel(g.name, 26)} (${Math.round(g.completion_percentage)}%)`
+                    : truncateQamLabel(g.name, 30),
               }))}
               selectedOption={game?.appid ?? games[0].appid}
               onChange={(opt: SingleDropdownOption) => onSelectGame(Number(opt.data))}
@@ -115,8 +115,8 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
         {/* Steam Achievement Set Selector (when game defines multiple sets) */}
         {game && achievementSets.length > 1 && (
           <PanelSectionRow>
-            <DropdownItem
-              label="Set"
+            <Dropdown
+              ariaLabel="Set"
               menuLabel="Choose Achievement Set"
               rgOptions={[
                 {
@@ -125,7 +125,7 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
                 },
                 ...achievementSets.map((s) => ({
                   data: s.id,
-                  label: `${truncateQamLabel(s.name, 16)}${s.dlc_appid ? ' [DLC]' : ''} (${s.unlocked_count}/${s.total_achievements})`,
+                  label: `${truncateQamLabel(s.name, 22)}${s.dlc_appid ? ' [DLC]' : ''} (${s.unlocked_count}/${s.total_achievements})`,
                 })),
               ]}
               selectedOption={selectedSetId}

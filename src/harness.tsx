@@ -224,31 +224,95 @@ const HarnessApp: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Emulated Viewport */}
-      <main key={mountKey} className="flex-1 flex items-start justify-center relative">
-        {viewMode === 'dashboard' ? (
-          <div className="w-full relative">
-            {/* Simulated SteamOS Gaming Mode Fixed Top Bar (~42px) */}
-            <div
-              data-testid="steamos-native-topbar"
-              className="w-full h-[42px] bg-[#0b1016]/95 border-b border-[#2e3d52]/80 px-4 flex items-center justify-between text-[11px] text-slate-300 font-semibold absolute top-0 left-0 right-0 z-30 pointer-events-none"
-            >
-              <span className="text-slate-100 font-bold">STEAM</span>
-              <span>Simulated SteamOS Top Chrome (42px Safe Area) • 13:20</span>
+      {/* Main Emulated Steam Deck 1280x800 Viewport */}
+      <main key={mountKey} className="flex-1 flex items-center justify-center p-4 overflow-auto">
+        <div
+          data-testid="steam-deck-screen"
+          className="w-[1280px] h-[800px] max-w-full bg-[#090d12] border border-[#2e3d52] rounded-2xl shadow-2xl overflow-hidden flex flex-col relative"
+        >
+          {/* SteamOS Top Status Bar (40px) */}
+          <div
+            data-testid="steamos-native-topbar"
+            className="w-full h-[40px] flex-shrink-0 bg-[#0b1016]/95 border-b border-[#2e3d52]/60 px-5 flex items-center justify-between text-xs text-slate-200 font-semibold z-30"
+          >
+            <span className="text-slate-400 font-bold tracking-wider">STEAM OS (1280×800)</span>
+            <div className="flex items-center gap-3">
+              <span className="text-slate-300">Wi-Fi</span>
+              <span className="flex items-center gap-1">
+                <span>93%</span>
+                <span className="inline-block w-4 h-2.5 rounded-sm bg-emerald-400 border border-emerald-200" />
+              </span>
+              <span>13:37</span>
+              <span className="w-6 h-6 rounded-full bg-[#389fff] text-white flex items-center justify-center text-[10px] font-bold">
+                D
+              </span>
             </div>
-            <FullDashboardPage />
           </div>
-        ) : (
-          <div className="py-6 px-4 flex flex-col items-center gap-3 w-full">
-            <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-              <Smartphone className="w-3.5 h-3.5 text-[#389fff]" />
-              <span>Steam Deck Quick Access Menu (300px Native Drawer Constraint)</span>
-            </div>
-            <div className="w-[300px] bg-[#0e141b] border border-[#2e3d52] rounded-xl p-2 shadow-2xl overflow-hidden">
-              <DeckyContent />
-            </div>
+
+          {/* Screen Body */}
+          <div className="flex-1 relative overflow-hidden flex">
+            {viewMode === 'dashboard' ? (
+              <div className="w-full h-full overflow-y-auto">
+                <FullDashboardPage />
+              </div>
+            ) : (
+              <>
+                {/* Background Game Art Placeholder */}
+                <div className="flex-1 bg-gradient-to-br from-[#121923] via-[#0d131c] to-[#080c11] flex items-center justify-center text-slate-600 text-xs select-none">
+                  <span>SteamOS Game / Home Background (1280×800)</span>
+                </div>
+
+                {/* Exact Steam Deck QAM Panel: 340px total (48px icon rail + 292px Decky pane) */}
+                <aside
+                  data-testid="steamos-qam-drawer"
+                  className="w-[340px] h-full flex-shrink-0 bg-[#1a222d]/95 border-l border-[#2e3d52] flex shadow-2xl"
+                >
+                  {/* Left 48px SteamOS QAM Icon Rail */}
+                  <div className="w-[48px] flex-shrink-0 bg-[#141b24] border-r border-[#2a384b] flex flex-col items-center py-3 gap-4 text-slate-400 text-xs">
+                    <span>🔔</span>
+                    <span>👥</span>
+                    <span>⚙️</span>
+                    <span>⚡</span>
+                    <span>🎵</span>
+                    <span>❓</span>
+                    <span className="w-full py-2 bg-[#2a384b] text-white text-center border-l-2 border-[#389fff]">
+                      🔌
+                    </span>
+                  </div>
+
+                  {/* Right 292px Decky Plugin Pane */}
+                  <div className="w-[292px] flex-shrink-0 flex flex-col h-full overflow-hidden">
+                    <div className="h-[44px] flex-shrink-0 px-3 flex items-center gap-3 border-b border-[#2a384b]/70">
+                      <span className="px-2 py-0.5 rounded-full bg-[#3a4759] text-white text-xs font-bold">
+                        ←
+                      </span>
+                      <span className="text-sm font-bold text-slate-100">Next Unlock</span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2">
+                      <DeckyContent />
+                    </div>
+                  </div>
+                </aside>
+              </>
+            )}
           </div>
-        )}
+
+          {/* SteamOS Bottom Footer Bar (36px) */}
+          <div className="w-full h-[36px] flex-shrink-0 bg-[#0b1016]/95 border-t border-[#2e3d52]/60 px-5 flex items-center justify-end gap-5 text-[11px] font-semibold text-slate-300 z-30">
+            <span>
+              <span className="inline-block px-1.5 py-0.2 rounded-full bg-slate-200 text-[#0b1016] font-bold mr-1">
+                A
+              </span>
+              SELECT
+            </span>
+            <span>
+              <span className="inline-block px-1.5 py-0.2 rounded-full bg-slate-200 text-[#0b1016] font-bold mr-1">
+                B
+              </span>
+              BACK
+            </span>
+          </div>
+        </div>
       </main>
     </div>
   );

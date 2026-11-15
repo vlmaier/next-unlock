@@ -81,13 +81,45 @@ export const Field: React.FC<FieldProps> = (props) => {
   );
 };
 
-// 4. DropdownItem
+// 4. Dropdown (Full-width select without left Field label)
+export const Dropdown: React.FC<any> = (props) => {
+  const Real = getDFL().Dropdown;
+  if (Real) {
+    return (
+      <div className="w-full">
+        <Real {...props} />
+      </div>
+    );
+  }
+  return (
+    <select
+      aria-label={props.ariaLabel || props.menuLabel || 'Select'}
+      value={props.selectedOption}
+      onChange={(e) => {
+        const raw = e.target.value;
+        const num = Number(raw);
+        props.onChange?.({ data: !isNaN(num) && raw !== '' ? num : raw });
+      }}
+      className="w-full bg-[#e6edf5] hover:bg-white text-[#1a222c] text-xs font-semibold rounded px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-[#389fff] cursor-pointer truncate"
+    >
+      {props.rgOptions?.map((opt: any) => (
+        <option key={String(opt.data)} value={opt.data}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+// 5. DropdownItem (SteamOS Field row: label left + squeezed ~135px dropdown right)
 export const DropdownItem: React.FC<any> = (props) => {
   const Real = getDFL().DropdownItem;
   if (Real) return <Real {...props} />;
   return (
-    <div className="w-full flex flex-col gap-1">
-      {props.label && <span className="text-[11px] text-slate-300 font-semibold">{props.label}</span>}
+    <div className="w-full flex items-center justify-between gap-2 py-1">
+      {props.label && (
+        <span className="text-xs text-slate-200 font-medium truncate">{props.label}</span>
+      )}
       <select
         aria-label={typeof props.label === 'string' ? props.label : 'Select Game'}
         value={props.selectedOption}
@@ -96,7 +128,9 @@ export const DropdownItem: React.FC<any> = (props) => {
           const num = Number(raw);
           props.onChange?.({ data: !isNaN(num) && raw !== '' ? num : raw });
         }}
-        className="w-full bg-[#1e293b] border border-[#344359] hover:border-[#389fff] text-slate-100 text-xs font-semibold rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-[#389fff] cursor-pointer"
+        className={`${
+          props.label ? 'w-[136px] flex-shrink-0' : 'w-full'
+        } bg-[#e6edf5] hover:bg-white text-[#1a222c] text-xs font-semibold rounded px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-[#389fff] cursor-pointer truncate`}
       >
         {props.rgOptions?.map((opt: any) => (
           <option key={String(opt.data)} value={opt.data}>
