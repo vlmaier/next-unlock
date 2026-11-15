@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/vlmaier/next-unlock/compare/v2.4.1...v2.5.0) (2026-11-15)
+
+
+### Features
+
+* add LB/RB category switching, LT/RT game switching, and controller-accessible X/D-pad Guide navigation ([65f8333](https://github.com/vlmaier/next-unlock/commit/65f8333f6c75e2ad8931cce55328d30b28db9a8c))
+
 ## [2.4.1](https://github.com/vlmaier/next-unlock/compare/v2.4.0...v2.4.1) (2026-11-15)
 
 
