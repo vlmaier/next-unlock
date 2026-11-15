@@ -384,6 +384,8 @@ function getNativeSteamLibraryApps(): Game[] {
       const appid = Number(app?.appid);
       const name = typeof app?.display_name === 'string' ? app.display_name.trim() : '';
       if (!appid || appid <= 0 || !name || seen.has(appid)) continue;
+      // Only include installed games (skip uninstalled owned library entries)
+      if (!app.installed) continue;
       // EAppType.Game === 1 (skip tools, Proton, DLCs, demos, videos when app_type is known)
       if (app.app_type !== undefined && app.app_type !== 1) continue;
       if (IGNORED_STEAM_APP_IDS.has(appid)) continue;
@@ -602,9 +604,10 @@ export class SteamApiService {
               merged.push(owned);
             }
           }
-          // Enrich any game whose details are already in memory cache
+          // Enrich any game whose details are already in memory or localStorage cache
           const enriched = merged.map((g: Game) => {
-            const cachedDetail = this.detailsCache.get(g.appid);
+            const cachedDetail =
+              this.detailsCache.get(g.appid) || this.getCachedGameDetailsSync(g.appid);
             if (cachedDetail && cachedDetail.game.total_achievements > 0) {
               return {
                 ...g,
@@ -731,7 +734,10 @@ export class SteamApiService {
       try {
         if (!forceRefresh) {
           const cached = this.getCachedGameDetailsSync(g.appid);
-          if (cached && cached.game.total_achievements > 0) {
+          if (
+            cached &&
+            (cached.game.achievements.length > 0 || cached.game.total_achievements === 0)
+          ) {
             resultsByAppId.set(g.appid, cached.game);
             completed += 1;
             onProgress?.(completed, total);

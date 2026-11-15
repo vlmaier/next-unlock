@@ -13,10 +13,10 @@ Defines how Next Unlock discovers installed games, detects the currently running
 3. **App Manifest Parsing (`parse_appmanifest`)**:
    - Parses `appmanifest_<appid>.acf` for `"appid"`, `"name"`, and `"LastPlayed"` timestamp.
    - Filters out non-game tools, Proton versions, Steam Linux Runtimes, Steamworks Common Redistributables, and Soundtracks (`IGNORED_APP_IDS` + case-insensitive name filter).
-4. **Full Owned Library Merge & Sorting**:
+4. **Installed Library Merge & Sorting**:
    - Deduplicates by `appid` (keeping the entry with the highest `last_played`).
    - Places the currently running `appid` first (if any), followed by all installed games sorted by `last_played` descending, then `name` ascending.
-   - Frontend `getGames` also inspects SteamOS Gaming Mode's native library store (`window.collectionStore?.allAppsCollection?.allApps` / `window.appStore?.m_mapApps`) for owned games (`app_type === 1`), merging any uninstalled owned games after installed games (sorted by `rt_last_time_played` desc) so the user's entire owned library (e.g. 200+ games) is discovered and progressively synced while surfacing `"Syncing library (X/Y)..."`.
+   - Frontend `getGames` scopes the library to **installed games** from the backend (`appmanifest_*.acf` + local `librarycache` stats) plus the currently running app, only using SteamOS `collectionStore` / `appStore` for **installed** games (`app.installed === true`) or as an offline/RPC-unavailable fallback. Uninstalled owned games are never queued for automatic background scraping.
 
 ## 3. Running Game Detection
 1. **Frontend Sync Detection (`getActiveApp`)**:

@@ -551,7 +551,7 @@ def fetch_achievements_from_steam(
             ),
             "Accept-Language": "en-US,en;q=0.9",
             "Accept-Encoding": "gzip",
-            "Cookie": "wants_mature_content=1; birthtime=0; lastagecheckage=1-0-1990",
+            "Cookie": "Steam_Language=english; wants_mature_content=1; birthtime=0; lastagecheckage=1-0-1990",
         },
     )
 

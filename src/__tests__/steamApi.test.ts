@@ -176,16 +176,16 @@ describe('SteamApiService & Canonical Recommendation Engine', () => {
       expect(details.game.total_achievements).toBe(0);
     });
 
-    it('merges SteamOS collectionStore owned library games alongside installed games', async () => {
+    it('merges installed SteamOS collectionStore games and excludes uninstalled owned games', async () => {
       (window as any).collectionStore = {
         allAppsCollection: {
           allApps: [
             { appid: 2062430, display_name: 'BALL x PIT', app_type: 1, installed: true, rt_last_time_played: 200 },
-            { appid: 1245620, display_name: 'Elden Ring', app_type: 1, installed: false, rt_last_time_played: 150 },
+            { appid: 1245620, display_name: 'Elden Ring', app_type: 1, installed: true, rt_last_time_played: 150 },
             { appid: 1091500, display_name: 'Cyberpunk 2077', app_type: 1, installed: false, rt_last_time_played: 100 },
             { appid: 1493710, display_name: 'Proton Experimental', app_type: 1, installed: true },
-            { appid: 555555, display_name: 'Game Soundtrack', app_type: 1, installed: false },
-            { appid: 666666, display_name: 'Some DLC Pack', app_type: 4, installed: false },
+            { appid: 555555, display_name: 'Game Soundtrack', app_type: 1, installed: true },
+            { appid: 666666, display_name: 'Some DLC Pack', app_type: 4, installed: true },
           ],
         },
       };
@@ -212,10 +212,62 @@ describe('SteamApiService & Canonical Recommendation Engine', () => {
 
         const games = await SteamApiService.getGames(true);
         const appIds = games.map((g) => g.appid);
-        expect(appIds).toEqual([2062430, 1245620, 1091500]);
+        expect(appIds).toEqual([2062430, 1245620]);
       } finally {
         delete (window as any).collectionStore;
       }
+    });
+
+    it('skips re-fetching cached 0-achievement games in getAllGamesDetails', async () => {
+      const mockCall = vi.fn(async (method: string, appid?: number) => {
+        if (method === 'get_pinned') return [];
+        if (method === 'get_active_app') return null;
+        if (method === 'get_game_details' && appid === 888888) {
+          return {
+            game: {
+              appid: 888888,
+              name: 'No Achievements Game',
+              header_image: '',
+              total_achievements: 0,
+              unlocked_count: 0,
+              completion_percentage: 0,
+              achievements: [],
+            },
+            ranked: {
+              pinned: [],
+              up_next: [],
+              almost_there: [],
+              easy_grabs: [],
+              missable: [],
+              locked: [],
+              unlocked: [],
+            },
+          };
+        }
+        return null;
+      });
+      __setCallFn(mockCall);
+
+      await SteamApiService.getGameDetails(888888, true);
+      const callsAfterFirst = mockCall.mock.calls.filter((c) => c[0] === 'get_game_details').length;
+      expect(callsAfterFirst).toBe(1);
+
+      await SteamApiService.getAllGamesDetails(
+        [
+          {
+            appid: 888888,
+            name: 'No Achievements Game',
+            header_image: '',
+            total_achievements: 0,
+            unlocked_count: 0,
+            completion_percentage: 0,
+            achievements: [],
+          },
+        ],
+        false
+      );
+      const callsAfterAll = mockCall.mock.calls.filter((c) => c[0] === 'get_game_details').length;
+      expect(callsAfterAll).toBe(1);
     });
 
     it('preserves native nTotal/nAchieved when SteamOS only caches partial vecHighlight (e.g. 25/27 instead of 12/12)', async () => {

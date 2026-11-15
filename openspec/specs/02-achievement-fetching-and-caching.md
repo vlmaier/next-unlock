@@ -86,6 +86,8 @@ Defines how achievement schemas and global rarity stats are fetched from Steam C
    - Queries `window.SteamClient?.Apps?.GetMyAchievementsForApp` (supporting both numeric and string `appid`) and `window.appDetailsStore` (`GetAchievements(appid)` / `GetAppDetails(appid)`) **in parallel** with the backend RPC call (`Promise.all`) to avoid sequential timeout delays.
    - Maps each native achievement (`bAchieved`, `rtUnlocked`, `flCurrentProgress`, `flMaxProgress`) by ID and normalized name.
    - Native unlock status and progress override backend defaults, and `unlocked_count`, `completion_percentage`, and `ranked` are recomputed using the canonical ranking algorithm.
-3. **Cache Invalidation**:
+3. **Cache Invalidation, Scoped Refresh & Lazy Enrichment**:
    - `togglePin(achievementId)` MUST immediately update `pinnedIds` AND re-rank all entries in `detailsCache` and `localStorage` synchronously before returning, so any component reading `getGameDetails(appid)` immediately sees the updated `is_pinned` and `ranked.pinned` lists.
-   - `refresh(appid)` (`forceRefresh = true`) MUST bypass in-memory and `localStorage` caches and pass `force_refresh=True` to the backend RPC.
+   - `refresh(appid)` (`forceRefresh = true`) MUST bypass in-memory and `localStorage` caches and pass `force_refresh=True` to the backend RPC **only for the selected game** (never triggering a full-library re-scrape in single-game view).
+   - Opening QAM (`DeckyContent`) or `FullDashboardPage` in single-game mode MUST NOT trigger a background `getAllGamesDetails` sync loop across other games.
+   - `fetchAndCacheGameDetails` and `getAllGamesDetails` MUST cache and respect `0`-achievement games (`cached_at` / `total_achievements === 0`) so games without achievements are not re-fetched repeatedly.

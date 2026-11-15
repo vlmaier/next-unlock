@@ -188,27 +188,50 @@ def parse_steam_guide_missables(
     if not ach_entries:
         return result
 
-    # Extract subsection blocks: <div class="subSectionTitle">...</div> ... <div class="subSectionDesc">...</div>
-    subsections = re.findall(
-        r'class="subSectionTitle"[^>]*>(.*?)</div>\s*<div class="subSectionDesc"[^>]*>(.*?)</div>\s*</div>',
-        guide_html,
-        re.DOTALL | re.IGNORECASE,
+    # Extract subsection blocks robustly even when subSectionDesc contains nested <div> elements
+    section_chunks = re.split(
+        r'<div[^>]*class="subSectionTitle"[^>]*>', guide_html, flags=re.IGNORECASE
     )
+    subsections: list[tuple[str, str]] = []
+    for chunk in section_chunks[1:]:
+        title_end = chunk.find("</div>")
+        if title_end < 0:
+            continue
+        raw_title = chunk[:title_end]
+        rest = chunk[title_end + 6 :]
+        desc_m = re.search(
+            r'<div[^>]*class="subSectionDesc"[^>]*>(.*)', rest, re.DOTALL | re.IGNORECASE
+        )
+        raw_body = desc_m.group(1) if desc_m else rest
+        subsections.append((raw_title, raw_body))
 
     missable_texts: list[str] = []
     for raw_title, raw_body in subsections:
         clean_title = html.unescape(re.sub(r"<[^>]+>", " ", raw_title)).strip().lower()
-        clean_body = html.unescape(re.sub(r"<[^>]+>", " ", raw_body)).strip()
+        body_with_breaks = re.sub(
+            r"<(?:br|/div|/p|/li|/tr)\b[^>]*>", "\n", raw_body, flags=re.IGNORECASE
+        )
+        clean_body = html.unescape(re.sub(r"<[^>]+>", " ", body_with_breaks)).strip()
         if any(
             kw in clean_title
             for kw in ("missable", "point of no return", "watch out", "lockout", "before you")
         ):
             missable_texts.append(clean_body)
         elif "missable" in clean_body.lower():
-            # Extract lines/paragraphs mentioning missable inside general walkthrough sections
-            for line in re.split(r"[\r\n]+|(?<=[.!?])\s+", clean_body):
-                if "missable" in line.lower():
-                    missable_texts.append(line)
+            # Extract lines/paragraphs mentioning missable (plus preceding heading line)
+            lines = [
+                ln.strip() for ln in re.split(r"[\r\n]+|(?<=[.!?])\s+", clean_body) if ln.strip()
+            ]
+            for idx_ln, line in enumerate(lines):
+                if (
+                    "missable" in line.lower()
+                    and "not missable" not in line.lower()
+                    and "no missable" not in line.lower()
+                ):
+                    if idx_ln > 0:
+                        missable_texts.append(f"{lines[idx_ln - 1]} — {line}")
+                    else:
+                        missable_texts.append(line)
 
     # Also check if the guide title itself is dedicated to missable achievements
     guide_title_m = re.search(
@@ -284,6 +307,7 @@ def _http_get_text(url: str, timeout: float = 2.5) -> str | None:
                 "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             ),
             "Accept-Language": "en-US,en;q=0.9",
+            "Cookie": "Steam_Language=english; wants_mature_content=1; birthtime=0; lastagecheckage=1-0-1990",
         },
     )
     try:
@@ -342,22 +366,25 @@ def enrich_achievements_with_missables(
                 parsed_json: object = json.loads(raw_json)
                 missable_lookup.update(parse_scavenger_db_payload(parsed_json))
 
-    # Tier 2: Top-Rated Steam Community Guide "Missable" Section Parser (fallback)
+    # Tier 2: Top-Rated Steam Community Achievement Guide "Missable" Section Parser (fallback)
     if not missable_lookup and not is_offline:
         search_url = (
             f"https://steamcommunity.com/app/{appid_int}/guides/"
-            f"?searchText=missable&browsesort=toprated&browsefilter=toprated&requiredtags%5B%5D=English&l=english"
+            f"?browsesort=toprated&browsefilter=toprated&requiredtags%5B%5D=Achievements&requiredtags%5B%5D=English&l=english"
         )
-        search_html = _http_get_text(search_url, timeout=2.5)
+        search_html = _http_get_text(search_url, timeout=3.0)
         if search_html:
-            guide_links = re.findall(
+            raw_links = re.findall(
                 r"https://steamcommunity\.com/sharedfiles/filedetails/\?id=\d+",
                 search_html,
             )
-            if guide_links:
-                guide_html = _http_get_text(guide_links[0], timeout=2.5)
+            guide_links = list(dict.fromkeys(raw_links))
+            for guide_url in guide_links[:2]:
+                guide_html = _http_get_text(guide_url, timeout=3.5)
                 if guide_html:
                     missable_lookup.update(parse_steam_guide_missables(guide_html, achievements))
+                if missable_lookup:
+                    break
 
     # Tier 3: SteamHunters Public API for broken/unobtainable achievements
     if not is_offline:

@@ -111,7 +111,7 @@ export const FullDashboardPage: React.FC = () => {
           setSyncStatus(gameList.length > 0 ? { done: 0, total: gameList.length } : null);
           const allLoadedGames = await SteamApiService.getAllGamesDetails(
             gameList,
-            forceRefresh,
+            false,
             (done, total) => setSyncStatus(done < total ? { done, total } : null)
           );
           setSyncStatus(null);
@@ -148,25 +148,6 @@ export const FullDashboardPage: React.FC = () => {
           setGames(mergedGames);
           setSelectedGame(details.game);
           setRanked(details.ranked);
-
-          // Progressively sync any uncached games in the background so the whole library stays in sync
-          const uncachedGames = mergedGames.filter(
-            (g) => g.appid !== targetId && (!g.achievements || g.achievements.length === 0)
-          );
-          if (uncachedGames.length > 0) {
-            setSyncStatus({ done: 0, total: uncachedGames.length });
-            SteamApiService.getAllGamesDetails(
-              uncachedGames,
-              false,
-              (done, total) => setSyncStatus(done < total ? { done, total } : null)
-            )
-              .then((syncedList) => {
-                const byId = new Map(syncedList.map((g) => [g.appid, g]));
-                setGames((prev) => prev.map((g) => byId.get(g.appid) || g));
-                setSyncStatus(null);
-              })
-              .catch(() => setSyncStatus(null));
-          }
         } else {
           setGames(gameList);
           setSelectedGame(null);
@@ -264,7 +245,6 @@ export const DeckyContent: React.FC = () => {
   const [ranked, setRanked] = useState<RankedAchievements | null>(init.ranked);
   const [loading, setLoading] = useState<boolean>(!init.hasHydratedData);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [syncStatus, setSyncStatus] = useState<{ done: number; total: number } | null>(null);
 
   const loadData = useCallback(
     async (forceRefresh = false) => {
@@ -299,25 +279,6 @@ export const DeckyContent: React.FC = () => {
           setGames(mergedGames);
           setSelectedGame(details.game);
           setRanked(details.ranked);
-
-          // Progressively sync any uncached games in the background so the whole library stays in sync
-          const uncachedGames = mergedGames.filter(
-            (g) => g.appid !== targetId && (!g.achievements || g.achievements.length === 0)
-          );
-          if (uncachedGames.length > 0) {
-            setSyncStatus({ done: 0, total: uncachedGames.length });
-            SteamApiService.getAllGamesDetails(
-              uncachedGames,
-              false,
-              (done, total) => setSyncStatus(done < total ? { done, total } : null)
-            )
-              .then((syncedList) => {
-                const byId = new Map(syncedList.map((g) => [g.appid, g]));
-                setGames((prev) => prev.map((g) => byId.get(g.appid) || g));
-                setSyncStatus(null);
-              })
-              .catch(() => setSyncStatus(null));
-          }
         } else {
           setGames(gameList);
           setSelectedGame(null);
@@ -409,7 +370,6 @@ export const DeckyContent: React.FC = () => {
         games={games}
         isRunningGame={isRunning}
         isRefreshing={isRefreshing}
-        syncStatus={syncStatus}
         onSelectGame={handleSelectGame}
         onTogglePin={handleTogglePin}
         onOpenFullDashboard={handleOpenFullDashboard}

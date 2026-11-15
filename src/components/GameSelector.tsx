@@ -15,7 +15,7 @@ export const GameSelector: React.FC<GameSelectorProps> = ({
   selectedAppId,
   onSelectGame,
 }) => {
-  const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
+  const [failedUrls, setFailedUrls] = useState<Record<string, boolean>>({});
   const isAllSelected = selectedAppId === 'all';
 
   return (
@@ -39,8 +39,8 @@ export const GameSelector: React.FC<GameSelectorProps> = ({
       {/* Individual Game Pills */}
       {games.map((game) => {
         const isSelected = selectedAppId === game.appid;
-        const isFailed = failedImages[game.appid];
         const imgSrc = game.header_image || getGameHeaderUrl(game.appid);
+        const isFailed = imgSrc ? Boolean(failedUrls[imgSrc]) : true;
 
         return (
           <Focusable
@@ -59,7 +59,7 @@ export const GameSelector: React.FC<GameSelectorProps> = ({
               <img
                 src={imgSrc}
                 alt=""
-                onError={() => setFailedImages((prev) => ({ ...prev, [game.appid]: true }))}
+                onError={() => setFailedUrls((prev) => ({ ...prev, [imgSrc]: true }))}
                 style={{ width: 38, height: 18 }}
                 className="rounded object-cover border border-slate-700/60 flex-shrink-0"
               />
