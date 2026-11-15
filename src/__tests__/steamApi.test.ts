@@ -175,5 +175,47 @@ describe('SteamApiService & Canonical Recommendation Engine', () => {
       expect(details.game.name).toBe('Zero Achievement Game');
       expect(details.game.total_achievements).toBe(0);
     });
+
+    it('merges SteamOS collectionStore owned library games alongside installed games', async () => {
+      (window as any).collectionStore = {
+        allAppsCollection: {
+          allApps: [
+            { appid: 2062430, display_name: 'BALL x PIT', app_type: 1, installed: true, rt_last_time_played: 200 },
+            { appid: 1245620, display_name: 'Elden Ring', app_type: 1, installed: false, rt_last_time_played: 150 },
+            { appid: 1091500, display_name: 'Cyberpunk 2077', app_type: 1, installed: false, rt_last_time_played: 100 },
+            { appid: 1493710, display_name: 'Proton Experimental', app_type: 1, installed: true },
+            { appid: 555555, display_name: 'Game Soundtrack', app_type: 1, installed: false },
+            { appid: 666666, display_name: 'Some DLC Pack', app_type: 4, installed: false },
+          ],
+        },
+      };
+
+      try {
+        __setCallFn(async (method) => {
+          if (method === 'get_games') {
+            return [
+              {
+                appid: 2062430,
+                name: 'BALL x PIT',
+                header_image: '',
+                total_achievements: 82,
+                unlocked_count: 67,
+                completion_percentage: 81.7,
+                achievements: [],
+              },
+            ];
+          }
+          if (method === 'get_active_app') return null;
+          if (method === 'get_pinned') return [];
+          return null;
+        });
+
+        const games = await SteamApiService.getGames(true);
+        const appIds = games.map((g) => g.appid);
+        expect(appIds).toEqual([2062430, 1245620, 1091500]);
+      } finally {
+        delete (window as any).collectionStore;
+      }
+    });
   });
 });

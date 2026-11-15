@@ -347,6 +347,70 @@ function formatSteamAchievement(ach: any, appid: number): Achievement {
   return formatted;
 }
 
+const IGNORED_STEAM_APP_IDS = new Set<number>([
+  228980, 1070560, 1391110, 1628350, 1493710, 1580130, 1161040, 1826330, 2180100, 2348590, 2805730,
+  1887720, 1420170, 250820,
+]);
+
+const IGNORED_STEAM_NAME_SUBSTRINGS = [
+  'proton ',
+  'steam linux runtime',
+  'steamworks common',
+  'steam controller',
+  'steamvr',
+  'soundtrack',
+];
+
+function getNativeSteamLibraryApps(): Game[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const w = window as any;
+    let rawApps: any[] = [];
+    if (Array.isArray(w.collectionStore?.allAppsCollection?.allApps)) {
+      rawApps = w.collectionStore.allAppsCollection.allApps;
+    } else if (w.appStore?.m_mapApps && typeof w.appStore.m_mapApps.values === 'function') {
+      rawApps = Array.from(w.appStore.m_mapApps.values());
+    }
+    if (!rawApps.length) return [];
+
+    const filtered: Array<{ game: Game; installed: boolean; lastPlayed: number }> = [];
+    const seen = new Set<number>();
+    for (const app of rawApps) {
+      const appid = Number(app?.appid);
+      const name = typeof app?.display_name === 'string' ? app.display_name.trim() : '';
+      if (!appid || appid <= 0 || !name || seen.has(appid)) continue;
+      // EAppType.Game === 1 (skip tools, Proton, DLCs, demos, videos when app_type is known)
+      if (app.app_type !== undefined && app.app_type !== 1) continue;
+      if (IGNORED_STEAM_APP_IDS.has(appid)) continue;
+      const lower = name.toLowerCase();
+      if (IGNORED_STEAM_NAME_SUBSTRINGS.some((sub) => lower.includes(sub))) continue;
+      seen.add(appid);
+      filtered.push({
+        game: {
+          appid,
+          name,
+          header_image: getGameHeaderUrl(appid),
+          total_achievements: 0,
+          unlocked_count: 0,
+          completion_percentage: 0,
+          achievements: [],
+        },
+        installed: Boolean(app.installed),
+        lastPlayed: Number(app.rt_last_time_played) || 0,
+      });
+    }
+
+    filtered.sort((a, b) => {
+      if (a.installed !== b.installed) return a.installed ? -1 : 1;
+      if (b.lastPlayed !== a.lastPlayed) return b.lastPlayed - a.lastPlayed;
+      return a.game.name.localeCompare(b.game.name);
+    });
+    return filtered.map((entry) => entry.game);
+  } catch {
+    return [];
+  }
+}
+
 export class SteamApiService {
   private static pinnedIds = new Set<string>();
   private static detailsCache = new Map<number, { game: Game; ranked: RankedAchievements; ts: number }>();
@@ -500,6 +564,7 @@ export class SteamApiService {
     }
 
     await this.ensurePinsHydrated();
+    const nativeLibrary = getNativeSteamLibraryApps();
 
     try {
       const callFn = await getCallFn();
@@ -510,21 +575,26 @@ export class SteamApiService {
           null
         );
         const data = res && res.result !== undefined ? res.result : res;
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data) && (data.length > 0 || nativeLibrary.length > 0)) {
           const active = await getActiveAppAsync();
-          const merged = [...data];
-          if (active) {
-            const exists = merged.find((g: any) => g.appid === active.appid);
-            if (!exists) {
-              merged.unshift({
-                appid: active.appid,
-                name: active.name,
-                header_image: getGameHeaderUrl(active.appid),
-                total_achievements: 0,
-                unlocked_count: 0,
-                completion_percentage: 0,
-                achievements: [],
-              });
+          const merged: Game[] = [...data];
+          const seenIds = new Set<number>(merged.map((g) => g.appid));
+          if (active && !seenIds.has(active.appid)) {
+            seenIds.add(active.appid);
+            merged.unshift({
+              appid: active.appid,
+              name: active.name,
+              header_image: getGameHeaderUrl(active.appid),
+              total_achievements: 0,
+              unlocked_count: 0,
+              completion_percentage: 0,
+              achievements: [],
+            });
+          }
+          for (const owned of nativeLibrary) {
+            if (!seenIds.has(owned.appid)) {
+              seenIds.add(owned.appid);
+              merged.push(owned);
             }
           }
           // Enrich any game whose details are already in memory cache
@@ -552,9 +622,12 @@ export class SteamApiService {
     }
 
     const active = await getActiveAppAsync();
-    if (active) {
-      const single: Game[] = [
-        {
+    if (active || nativeLibrary.length > 0) {
+      const mergedFallback: Game[] = [];
+      const seenFallback = new Set<number>();
+      if (active) {
+        seenFallback.add(active.appid);
+        mergedFallback.push({
           appid: active.appid,
           name: active.name,
           header_image: getGameHeaderUrl(active.appid),
@@ -562,10 +635,16 @@ export class SteamApiService {
           unlocked_count: 0,
           completion_percentage: 0,
           achievements: [],
-        },
-      ];
-      this.saveGamesCache(single, now);
-      return single;
+        });
+      }
+      for (const owned of nativeLibrary) {
+        if (!seenFallback.has(owned.appid)) {
+          seenFallback.add(owned.appid);
+          mergedFallback.push(owned);
+        }
+      }
+      this.saveGamesCache(mergedFallback, now);
+      return mergedFallback;
     }
 
     const isTestOrHarness =
