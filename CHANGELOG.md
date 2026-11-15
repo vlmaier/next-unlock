@@ -1,3 +1,10 @@
+## [2.5.1](https://github.com/vlmaier/next-unlock/compare/v2.5.0...v2.5.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* remove nested Focusable and outer column Focusable to restore natural SteamOS D-pad navigation ([6352d36](https://github.com/vlmaier/next-unlock/commit/6352d36ceaadc27973d3f1bd3a49440aaba73e40))
+
 # [2.5.0](https://github.com/vlmaier/next-unlock/compare/v2.4.1...v2.5.0) (2026-11-15)
 
 
