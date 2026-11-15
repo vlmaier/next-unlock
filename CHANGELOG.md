@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/vlmaier/next-unlock/compare/v2.2.0...v2.3.0) (2026-11-15)
+
+
+### Features
+
+* add 3-tier Missable & Unobtainable achievement radar with point-of-no-return cutoff warnings ([430cfc4](https://github.com/vlmaier/next-unlock/commit/430cfc4762877e45995b493750b83c395c3fab05))
+
 # [2.2.0](https://github.com/vlmaier/next-unlock/compare/v2.1.0...v2.2.0) (2026-11-15)
 
 
