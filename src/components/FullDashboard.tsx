@@ -16,11 +16,56 @@ interface FullDashboardProps {
   ranked: RankedAchievements | null;
   isRunningGame?: boolean;
   isRefreshing?: boolean;
+  syncStatus?: { done: number; total: number } | null;
   onSelectGame: (appid: number | 'all') => void;
   onTogglePin: (id: string) => void;
   onRefresh?: () => void;
   onBack?: () => void;
 }
+
+const RibbonThumbnail: React.FC<{
+  appid: number;
+  headerImage?: string;
+  alt: string;
+}> = ({ appid, headerImage, alt }) => {
+  const [idx, setIdx] = useState(0);
+  const candidates = useMemo(() => {
+    const list: string[] = [];
+    if (headerImage) list.push(headerImage);
+    list.push(
+      `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`,
+      `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`,
+      `https://steamcdn-a.akamaihd.net/steam/apps/${appid}/header.jpg`
+    );
+    return Array.from(new Set(list));
+  }, [appid, headerImage]);
+
+  useEffect(() => {
+    setIdx(0);
+  }, [appid, headerImage]);
+
+  const src = idx < candidates.length ? candidates[idx] : null;
+  if (!src) {
+    return (
+      <div
+        style={{ width: 38, height: 18 }}
+        className="rounded bg-[#161f2c] border border-[#2e3d52] flex items-center justify-center flex-shrink-0"
+      >
+        <Gamepad2 className="w-3 h-3 text-[#389fff]" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setIdx((prev) => prev + 1)}
+      style={{ width: 38, height: 18 }}
+      className="rounded object-cover flex-shrink-0 border border-black/30"
+    />
+  );
+};
 
 interface RibbonTarget {
   key: string;
@@ -42,6 +87,7 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
   ranked,
   isRunningGame = false,
   isRefreshing = false,
+  syncStatus = null,
   onSelectGame,
   onTogglePin,
   onRefresh,
@@ -346,6 +392,14 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
         </div>
 
         <Focusable flow-children="row" className="flex items-center gap-2">
+          {syncStatus && syncStatus.total > 0 && (
+            <span
+              data-testid="library-sync-status"
+              className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#161f2c] text-[#389fff] border border-[#389fff]/30 whitespace-nowrap"
+            >
+              Syncing library ({syncStatus.done}/{syncStatus.total})...
+            </span>
+          )}
           {onRefresh && (
             <Focusable
               focusable={true}
@@ -532,14 +586,11 @@ export const FullDashboard: React.FC<FullDashboardProps> = ({
                   className="px-3 py-2 rounded-lg bg-[#0e141b] hover:bg-[#1e293b] border border-[#2e3d52] hover:border-[#389fff]/60 flex items-center justify-between gap-2.5 transition-all cursor-pointer focus:ring-2 focus:ring-[#389fff] focus:outline-none"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    {item.headerImage && (
-                      <img
-                        src={item.headerImage}
-                        alt={item.gameName}
-                        style={{ width: 38, height: 18 }}
-                        className="rounded object-cover flex-shrink-0 border border-black/30"
-                      />
-                    )}
+                    <RibbonThumbnail
+                      appid={item.appid}
+                      headerImage={item.headerImage}
+                      alt={item.gameName}
+                    />
                     <div className="min-w-0">
                       <div className="text-xs font-bold text-slate-100 truncate">
                         {item.gameName}

@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { DeckyContent, FullDashboardPage } from '../components/PluginRoot';
-import { __setCallFn, clearApiCache } from '../services/steamApi';
+import { __setCallFn, clearApiCache, getAchievementGuideUrl } from '../services/steamApi';
 import { MockSteamClientService } from '../services/mockSteamClient';
 import { execFileSync } from 'child_process';
 import path from 'path';
@@ -28,7 +28,7 @@ describe('UI Surfaces, No-Active-Game Mode & Full-Stack Python Integration', () 
     });
 
     // Game selector dropdown is rendered even when no game is running
-    const selectEl = screen.getByLabelText('Installed Game') as HTMLSelectElement;
+    const selectEl = screen.getByLabelText('Game') as HTMLSelectElement;
     expect(selectEl).toBeTruthy();
     expect(selectEl.value).toBe('1245620');
 
@@ -92,9 +92,13 @@ describe('UI Surfaces, No-Active-Game Mode & Full-Stack Python Integration', () 
 
     await waitFor(() => {
       expect(screen.getByText('Elden Ring')).toBeTruthy();
+      expect(screen.getByTestId('qam-progress-bar')).toBeTruthy();
     });
 
-    const selectEl = screen.getByLabelText('Installed Game') as HTMLSelectElement;
+    const selectEl = screen.getByLabelText('Game') as HTMLSelectElement;
+    // Verify long titles are truncated in QAM Dropdown so they don't clip the 300px drawer
+    const optionTexts = Array.from(selectEl.options).map((o) => o.text);
+    expect(optionTexts.some((t) => t.includes('…'))).toBe(true);
     fireEvent.change(selectEl, { target: { value: '999999' } });
 
     await waitFor(() => {
@@ -102,7 +106,7 @@ describe('UI Surfaces, No-Active-Game Mode & Full-Stack Python Integration', () 
     });
 
     // Game selector dropdown is STILL available so the user can switch back!
-    expect(screen.getByLabelText('Installed Game')).toBeTruthy();
+    expect(screen.getByLabelText('Game')).toBeTruthy();
     expect(screen.getByText('Open Full Dashboard')).toBeTruthy();
   });
 
@@ -170,6 +174,18 @@ describe('UI Surfaces, No-Active-Game Mode & Full-Stack Python Integration', () 
         'Bolt of Gransax'
       );
     });
+
+    // Verify SteamOS Top Chrome safe-area padding on FullDashboardPage
+    const dashboardRoot = document.querySelector('[data-theme="steam_slate"]') as HTMLElement;
+    expect(dashboardRoot.style.paddingTop).toBe('48px');
+
+    // Verify English language preference on Steam Guide lookup URLs
+    const guideUrl = getAchievementGuideUrl(1245620, 'Age of the Stars');
+    expect(guideUrl).toContain('requiredtags%5B%5D=English');
+    expect(guideUrl).toContain('l=english');
+
+    // Verify BALL x PIT (2062430) with hash-prefixed header & Risen Ballbylon DLC is present
+    expect(screen.getByTestId('game-pill-2062430')).toBeTruthy();
 
     // Clicking the Hero Missable Radar button filters strictly to locked missable achievements
     fireEvent.click(screen.getByTestId('missable-radar-btn'));

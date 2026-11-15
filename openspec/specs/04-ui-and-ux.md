@@ -11,10 +11,11 @@ Next Unlock must look and feel like a native part of **SteamOS Gaming Mode** (`#
 5. **No Nested Interactive Traps inside `Focusable`**: Ensure clicking or pressing `A` (Gamepad Activate) on any control (`DropdownItem`, `ButtonItem`, `Field`, `AchievementCard`, `GameSelector`, `CategoryFilter`) reliably triggers its handler without being swallowed by parent containers.
 
 ## 2. Surface 1: Quick Access Menu (`QuickAccessMenu.tsx` — 320px Drawer)
-The QAM panel is the fast, in-game or library-side companion. It must include:
+The QAM panel is the fast, in-game or library-side companion within SteamOS's 300px–320px drawer width constraints. It must include:
 1. **Game Selector & Controls Section (Always Visible When `games.length > 0`)**:
    - Even if no game is actively running (`isRunningGame == false`) or the selected game has `0` achievements, the **Game Selector Dropdown (`DropdownItem`)** MUST be rendered whenever `games.length > 0` so the user can pick any installed game.
-   - Displays completion progress bar (`ProgressBarWithInfo`) when `total_achievements > 0`, or a clear status message ("No Steam achievements recorded for this title — select another game above") when `total_achievements === 0`.
+   - Uses concise labels (`Game`, `Set`) and cleanly truncated dropdown option labels (`<= 28` chars) so long game titles never clip or overflow the 300px QAM drawer.
+   - Displays a self-contained, full-width completion progress bar (`w-full`, never overflowing to the right) when `total_achievements > 0`, or a clear status message ("No Steam achievements recorded for this title — select another game above") when `total_achievements === 0`.
 2. **Pinned Achievements Section**:
    - Shown whenever `ranked.pinned.length > 0`.
    - Clicking/activating a pinned item unpins it immediately.
@@ -26,7 +27,8 @@ The QAM panel is the fast, in-game or library-side companion. It must include:
    - **Refresh Achievements** button (`ButtonItem`) — calls `onRefresh(true)` (`forceRefresh = true`) with a visual loading indicator (`isRefreshing`) so the user sees immediate feedback.
 
 ## 3. Surface 2: Full Dashboard (`FullDashboard.tsx` — Fullscreen Route `/next-unlock`)
-1. **Unified Header Bar**:
+1. **Unified Header Bar & SteamOS Top Chrome Safe Area**:
+   - `FullDashboardPage` MUST reserve top safe-area padding (`pt-12` / `48px`) so SteamOS Gaming Mode's native fixed top bar never overlaps the `Next Unlock` title, subtitle, `Refresh` button, or `Back` button.
    - App title & icon, **Refresh** button (with spinning state during refresh), and **Back** button (`Navigation.NavigateBack()`).
 2. **Game Selector Bar (`GameSelector.tsx`)**:
    - Horizontal focusable row (`flow-children="row"`) with **All Games Overview** pill + individual installed game pills showing game icon, title, and completion percentage (when loaded).

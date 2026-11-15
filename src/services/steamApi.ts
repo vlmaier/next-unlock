@@ -100,9 +100,9 @@ export function getGameHeaderUrl(appid: number, providedUrl?: string): string {
 export function getAchievementGuideUrl(appid: number | undefined, achievementName: string): string {
   const query = encodeURIComponent(achievementName.trim());
   if (appid && appid > 0) {
-    return `https://steamcommunity.com/app/${appid}/guides/?searchText=${query}&browsesort=toprated&browsefilter=toprated`;
+    return `https://steamcommunity.com/app/${appid}/guides/?searchText=${query}&browsesort=toprated&browsefilter=toprated&requiredtags%5B%5D=English&l=english`;
   }
-  return `https://steamcommunity.com/workshop/browse/?searchtext=${query}&section=guides`;
+  return `https://steamcommunity.com/workshop/browse/?searchtext=${query}&section=guides&requiredtags%5B%5D=English&l=english`;
 }
 
 export function openAchievementGuide(appid: number | undefined, achievementName: string): string {
@@ -233,8 +233,12 @@ export function rankAchievements(achievements: Achievement[], pinnedSet: Set<str
   const missable: Achievement[] = [];
   const locked: Achievement[] = [];
   const unlocked: Achievement[] = [];
+  const seenIds = new Set<string>();
 
   achievements.forEach((rawAch) => {
+    const achId = rawAch.id || '';
+    if (achId && seenIds.has(achId)) return;
+    if (achId) seenIds.add(achId);
     const ach: Achievement = { ...rawAch };
     const isPinned = pinnedSet.has(ach.id);
     ach.is_pinned = isPinned;
@@ -502,7 +506,7 @@ export class SteamApiService {
       if (callFn) {
         const res = await withTimeout(
           forceRefresh ? callFn('get_games', true) : callFn('get_games'),
-          3500,
+          15000,
           null
         );
         const data = res && res.result !== undefined ? res.result : res;
@@ -529,10 +533,12 @@ export class SteamApiService {
             if (cachedDetail && cachedDetail.game.total_achievements > 0) {
               return {
                 ...g,
+                header_image: cachedDetail.game.header_image || g.header_image,
                 total_achievements: cachedDetail.game.total_achievements,
                 unlocked_count: cachedDetail.game.unlocked_count,
                 completion_percentage: cachedDetail.game.completion_percentage,
                 achievements: cachedDetail.game.achievements,
+                achievement_sets: cachedDetail.game.achievement_sets || g.achievement_sets,
               };
             }
             return g;
@@ -622,19 +628,36 @@ export class SteamApiService {
    * Loads details for all games in the list (used by "All Games Overview" mode)
    * so cross-library filtering works across the user's installed games.
    */
-  static async getAllGamesDetails(games: Game[], forceRefresh = false): Promise<Game[]> {
-    const results = await Promise.all(
-      games.slice(0, 12).map(async (g) => {
-        try {
-          const det = await this.getGameDetails(g.appid, forceRefresh);
-          return det.game;
-        } catch {
-          return g;
-        }
-      })
-    );
-    const byId = new Map(results.map((g) => [g.appid, g]));
-    return games.map((g) => byId.get(g.appid) || g);
+  static async getAllGamesDetails(
+    games: Game[],
+    forceRefresh = false,
+    onProgress?: (completed: number, total: number) => void
+  ): Promise<Game[]> {
+    const total = games.length;
+    if (total === 0) return games;
+
+    const resultsByAppId = new Map<number, Game>();
+    let completed = 0;
+    const batchSize = 4;
+
+    for (let i = 0; i < games.length; i += batchSize) {
+      const batch = games.slice(i, i + batchSize);
+      await Promise.all(
+        batch.map(async (g) => {
+          try {
+            const det = await this.getGameDetails(g.appid, forceRefresh);
+            resultsByAppId.set(g.appid, det.game);
+          } catch {
+            resultsByAppId.set(g.appid, g);
+          } finally {
+            completed += 1;
+            onProgress?.(completed, total);
+          }
+        })
+      );
+    }
+
+    return games.map((g) => resultsByAppId.get(g.appid) || g);
   }
 
   private static async queryNativeSteamClient(
@@ -654,11 +677,17 @@ export class SteamApiService {
     }
 
     const w = window as any;
+    const seenNativeKeys = new Set<string>();
     const ingestList = (rawList: any[]) => {
       if (!Array.isArray(rawList) || rawList.length === 0) return;
       if (!nativeAchievements) nativeAchievements = [];
       rawList.forEach((a: any) => {
         if (!a || typeof a !== 'object') return;
+        const dedupeKey = String(a.strID || a.id || a.strName || '').trim().toLowerCase();
+        if (dedupeKey) {
+          if (seenNativeKeys.has(dedupeKey)) return;
+          seenNativeKeys.add(dedupeKey);
+        }
         nativeAchievements!.push(a);
         const isAchieved = !!(a.bAchieved || a.unlocked);
         const progress: ProgressInfo | undefined =

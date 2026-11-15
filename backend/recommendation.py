@@ -217,6 +217,7 @@ def rank_achievements(
     - unlocked: All unlocked achievements
     """
     pinned_set = set(pinned_ids) if pinned_ids is not None else set()
+    seen_ids: set[str] = set()
 
     ranked: RankedAchievementsData = {
         "pinned": [],
@@ -230,6 +231,10 @@ def rank_achievements(
 
     for raw_ach in achievements:
         ach_id = str(raw_ach.get("id", ""))
+        if ach_id and ach_id in seen_ids:
+            continue
+        if ach_id:
+            seen_ids.add(ach_id)
         is_pinned = ach_id in pinned_set
 
         if bool(raw_ach.get("unlocked")):

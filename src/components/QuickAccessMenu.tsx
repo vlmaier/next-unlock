@@ -4,7 +4,6 @@ import {
   PanelSectionRow,
   DropdownItem,
   Field,
-  ProgressBarWithInfo,
   ButtonItem,
   SingleDropdownOption,
 } from './deckyUi';
@@ -12,12 +11,19 @@ import { Game, RankedAchievements } from '../types/achievement';
 import { AchievementIcon } from './AchievementIcon';
 import { computeAchievementSets, rankAchievements } from '../services/steamApi';
 
+function truncateQamLabel(text: string, maxLen = 22): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= maxLen) return trimmed;
+  return `${trimmed.slice(0, maxLen - 1).trimEnd()}…`;
+}
+
 interface QuickAccessMenuProps {
   game: Game | null;
   ranked: RankedAchievements | null;
   games?: Game[];
   isRunningGame?: boolean;
   isRefreshing?: boolean;
+  syncStatus?: { done: number; total: number } | null;
   onSelectGame?: (appid: number) => void;
   onTogglePin: (id: string) => void;
   onOpenFullDashboard?: () => void;
@@ -30,6 +36,7 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
   games = [],
   isRunningGame = false,
   isRefreshing = false,
+  syncStatus = null,
   onSelectGame,
   onTogglePin,
   onOpenFullDashboard,
@@ -90,14 +97,14 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
         {games.length > 0 && onSelectGame && (
           <PanelSectionRow>
             <DropdownItem
-              label={isRunningGame ? 'Active / Selected Game' : 'Installed Game'}
+              label="Game"
               menuLabel="Choose Game"
               rgOptions={games.map((g) => ({
                 data: g.appid,
                 label:
                   g.total_achievements > 0
-                    ? `${g.name} (${Math.round(g.completion_percentage)}%)`
-                    : g.name,
+                    ? `${truncateQamLabel(g.name, 20)} (${Math.round(g.completion_percentage)}%)`
+                    : truncateQamLabel(g.name, 25),
               }))}
               selectedOption={game?.appid ?? games[0].appid}
               onChange={(opt: SingleDropdownOption) => onSelectGame(Number(opt.data))}
@@ -109,16 +116,16 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
         {game && achievementSets.length > 1 && (
           <PanelSectionRow>
             <DropdownItem
-              label="Achievement Set"
+              label="Set"
               menuLabel="Choose Achievement Set"
               rgOptions={[
                 {
                   data: 'all',
-                  label: `All Sets (${game.unlocked_count}/${game.total_achievements} • ${Math.round(game.completion_percentage)}%)`,
+                  label: `All (${game.unlocked_count}/${game.total_achievements})`,
                 },
                 ...achievementSets.map((s) => ({
                   data: s.id,
-                  label: `${s.name}${s.dlc_appid ? ' [DLC]' : ''} (${s.unlocked_count}/${s.total_achievements} • ${Math.round(s.completion_percentage)}%)`,
+                  label: `${truncateQamLabel(s.name, 16)}${s.dlc_appid ? ' [DLC]' : ''} (${s.unlocked_count}/${s.total_achievements})`,
                 })),
               ]}
               selectedOption={selectedSetId}
@@ -133,18 +140,37 @@ export const QuickAccessMenu: React.FC<QuickAccessMenuProps> = ({
         {game && hasAchievements ? (
           <>
             <PanelSectionRow>
-              <ProgressBarWithInfo
-                nProgress={progressPct}
-                sOperationText={
-                  activeSet
-                    ? activeSet.name
-                    : isRunningGame
-                    ? 'Running Now'
-                    : 'Completion'
-                }
-                sTimeRemaining={`${progressUnlocked} / ${progressTotal} (${progressPct}%)`}
-              />
+              <div
+                data-testid="qam-progress-bar"
+                className="w-full max-w-full overflow-hidden flex flex-col gap-1.5 py-1.5 px-2.5 bg-[#1e293b]/70 rounded-lg border border-[#2a384b] box-border"
+              >
+                <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-200 min-w-0">
+                  <span className="truncate">
+                    {activeSet
+                      ? activeSet.name
+                      : isRunningGame
+                      ? 'Running Now'
+                      : 'Completion'}
+                  </span>
+                  <span className="text-[#389fff] font-bold whitespace-nowrap flex-shrink-0">
+                    {progressUnlocked} / {progressTotal} ({Math.round(progressPct)}%)
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-[#0e141b] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#389fff] rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+                  />
+                </div>
+              </div>
             </PanelSectionRow>
+            {syncStatus && syncStatus.total > 0 && (
+              <PanelSectionRow>
+                <div className="w-full text-[10px] text-[#389fff] font-semibold px-1 truncate">
+                  Syncing library ({syncStatus.done}/{syncStatus.total})...
+                </div>
+              </PanelSectionRow>
+            )}
             {lockedMissables.length > 0 && (
               <PanelSectionRow>
                 <Field

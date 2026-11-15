@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import ssl
+import time
 import urllib.request
 from collections.abc import Iterable, Mapping
 
@@ -30,6 +31,8 @@ from backend.models import (
 from backend.recommendation import compute_achievement_sets, compute_recommendation_score
 
 logger = logging.getLogger("next_unlock.fetcher")
+
+CACHE_TTL_SECONDS = 86400  # 24 hours: picks up newly released DLC sets & hash-prefixed store assets
 
 
 def get_cache_dir() -> str:
@@ -126,19 +129,23 @@ def load_cached_achievements(appid: int) -> FetchedAchievementsEnvelope | None:
                 raw_title = data.get("game_title")
                 raw_hdr = data.get("header_image")
                 raw_sets = data.get("achievement_sets")
+                raw_cached_at = data.get("cached_at")
                 typed_raw_sets = (
                     [s for s in raw_sets if isinstance(s, Mapping)]
                     if isinstance(raw_sets, list)
                     else None
                 )
                 computed_sets = compute_achievement_sets(ach_list, typed_raw_sets)
-                return {
+                envelope: FetchedAchievementsEnvelope = {
                     "appid": int(appid),
                     "game_title": str(raw_title) if isinstance(raw_title, str) else None,
                     "header_image": str(raw_hdr) if isinstance(raw_hdr, str) else None,
                     "achievements": ach_list,
                     "achievement_sets": computed_sets,
                 }
+                if isinstance(raw_cached_at, (int, float)):
+                    envelope["cached_at"] = float(raw_cached_at)
+                return envelope
             if isinstance(data, list) and len(data) > 0:
                 ach_list = enrich_achievements_with_missables(
                     int(appid),
@@ -176,6 +183,7 @@ def save_cached_achievements(
             "game_title": game_title,
             "achievements": ach_list,
             "achievement_sets": computed_sets,
+            "cached_at": time.time(),
         }
         if header_image:
             payload["header_image"] = header_image
@@ -340,7 +348,7 @@ def _parse_valve_ssr_data(content: str) -> ParsedCommunityHtmlResult | None:
                 )
                 ach_id = api_name or f"ach_{clean_slug}"
                 if ach_id in seen_ids:
-                    ach_id = f"{ach_id}_{ach_counter}"
+                    continue
                 seen_ids.add(ach_id)
 
                 ik = str(item.get("internal_key", ""))
@@ -512,7 +520,12 @@ def fetch_achievements_from_steam(
     if not force_refresh:
         cached = load_cached_achievements(appid_int)
         if cached and cached["achievements"]:
-            return cached
+            cached_at = cached.get("cached_at")
+            is_fresh = isinstance(cached_at, (int, float)) and (
+                time.time() - float(cached_at) < CACHE_TTL_SECONDS
+            )
+            if is_fresh:
+                return cached
 
     url = f"https://steamcommunity.com/achievements/{appid_int}?l=english"
     req = urllib.request.Request(

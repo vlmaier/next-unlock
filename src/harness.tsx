@@ -10,7 +10,7 @@ if (typeof window !== 'undefined') {
   (window as any).__NEXT_UNLOCK_TEST_HARNESS__ = true;
 }
 
-type SimRunningApp = 'none' | 1245620 | 1091500 | 1145350 | 367520 | 999999;
+type SimRunningApp = 'none' | 1245620 | 1091500 | 1145350 | 367520 | 2062430 | 2186680 | 999999;
 
 function configureSimulatedSteamOS(runningApp: SimRunningApp) {
   if (typeof window === 'undefined') return;
@@ -21,6 +21,8 @@ function configureSimulatedSteamOS(runningApp: SimRunningApp) {
     1091500: 'Cyberpunk 2077',
     1145350: 'Hades II',
     367520: 'Hollow Knight',
+    2062430: 'BALL x PIT',
+    2186680: 'Warhammer 40,000: Rogue Trader — Void Shadows Deluxe Edition',
     999999: 'Untracked Indie Prototype (0 Achievements)',
   };
 
@@ -180,6 +182,8 @@ const HarnessApp: React.FC = () => {
               <option value="1091500" className="bg-[#161f2c]">Running: Cyberpunk 2077 (1091500)</option>
               <option value="1145350" className="bg-[#161f2c]">Running: Hades II (1145350)</option>
               <option value="367520" className="bg-[#161f2c]">Running: Hollow Knight (367520)</option>
+              <option value="2062430" className="bg-[#161f2c]">Running: BALL x PIT (2062430)</option>
+              <option value="2186680" className="bg-[#161f2c]">Running: Rogue Trader Long Title (2186680)</option>
               <option value="999999" className="bg-[#161f2c]">Running: 0-Achievement Game (999999)</option>
             </select>
           </div>
@@ -221,16 +225,26 @@ const HarnessApp: React.FC = () => {
       </header>
 
       {/* Main Emulated Viewport */}
-      <main key={mountKey} className="flex-1 flex items-start justify-center">
+      <main key={mountKey} className="flex-1 flex items-start justify-center relative">
         {viewMode === 'dashboard' ? (
-          <FullDashboardPage />
+          <div className="w-full relative">
+            {/* Simulated SteamOS Gaming Mode Fixed Top Bar (~42px) */}
+            <div
+              data-testid="steamos-native-topbar"
+              className="w-full h-[42px] bg-[#0b1016]/95 border-b border-[#2e3d52]/80 px-4 flex items-center justify-between text-[11px] text-slate-300 font-semibold absolute top-0 left-0 right-0 z-30 pointer-events-none"
+            >
+              <span className="text-slate-100 font-bold">STEAM</span>
+              <span>Simulated SteamOS Top Chrome (42px Safe Area) • 13:20</span>
+            </div>
+            <FullDashboardPage />
+          </div>
         ) : (
           <div className="py-6 px-4 flex flex-col items-center gap-3 w-full">
             <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
               <Smartphone className="w-3.5 h-3.5 text-[#389fff]" />
-              <span>Steam Deck Quick Access Menu (320px Width)</span>
+              <span>Steam Deck Quick Access Menu (300px Native Drawer Constraint)</span>
             </div>
-            <div className="w-[320px] bg-[#0e141b] border border-[#2e3d52] rounded-xl p-2.5 shadow-2xl">
+            <div className="w-[300px] bg-[#0e141b] border border-[#2e3d52] rounded-xl p-2 shadow-2xl overflow-hidden">
               <DeckyContent />
             </div>
           </div>

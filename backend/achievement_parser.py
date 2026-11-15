@@ -105,6 +105,29 @@ def find_all_steam_roots() -> list[str]:
         os.path.expanduser("~/.var/app/com.valvesoftware.Steam/.local/share/Steam"),
         "/home/deck/.var/app/com.valvesoftware.Steam/.local/share/Steam",
     ]
+    decky_user_home = os.environ.get("DECKY_USER_HOME")
+    if decky_user_home:
+        candidates.extend(
+            [
+                os.path.join(decky_user_home, ".steam", "steam"),
+                os.path.join(decky_user_home, ".local", "share", "Steam"),
+                os.path.join(
+                    decky_user_home,
+                    ".var",
+                    "app",
+                    "com.valvesoftware.Steam",
+                    ".local",
+                    "share",
+                    "Steam",
+                ),
+            ]
+        )
+    for home_pattern in (
+        "/home/*/.steam/steam",
+        "/home/*/.local/share/Steam",
+        "/home/*/.var/app/com.valvesoftware.Steam/.local/share/Steam",
+    ):
+        candidates.extend(glob.glob(home_pattern))
     found: list[str] = []
     seen_real: set[str] = set()
     for path in candidates:
@@ -167,8 +190,13 @@ def get_library_folders(force_refresh: bool = False) -> list[str]:
                     logger.debug(f"Failed reading {vdf_path}: {e}")
 
     if not os.environ.get("NEXT_UNLOCK_STEAM_ROOT"):
-        for sd_steamapps in glob.glob("/run/media/**/steamapps", recursive=True):
-            add_folder(sd_steamapps)
+        for mount_glob in (
+            "/run/media/**/steamapps",
+            "/media/**/steamapps",
+            "/mnt/**/steamapps",
+        ):
+            for sd_steamapps in glob.glob(mount_glob, recursive=True):
+                add_folder(sd_steamapps)
 
     _cached_library_folders.val = folders
     _cached_library_folders.ts = now
@@ -296,6 +324,7 @@ def parse_local_user_stats(appid: int) -> LocalUserStatsEnvelope:
     unlocked_by_name: dict[str, AchievementData] = {}
     progress_by_name: dict[str, AchievementProgress] = {}
     achievements_by_key: dict[str, AchievementData] = {}
+    seen_ids_lower: set[str] = set()
 
     for key_name in ("vecAchieved", "vecHighlight"):
         arr = best_data.get(key_name)
@@ -304,10 +333,16 @@ def parse_local_user_stats(appid: int) -> LocalUserStatsEnvelope:
                 if not isinstance(raw_item, Mapping):
                     continue
                 ach = _format_librarycache_ach(raw_item, appid_int, unlocked_default=True)
+                aid_l = ach["id"].lower()
+                aname_l = ach["name"].lower()
                 if ach["unlocked"]:
                     unlocked_by_id[ach["id"]] = ach
-                    unlocked_by_name[ach["name"].lower()] = ach
-                achievements_by_key[ach["name"].lower() or ach["id"]] = ach
+                    unlocked_by_name[aname_l] = ach
+                dedupe_key = aname_l or aid_l
+                if aid_l in seen_ids_lower or dedupe_key in achievements_by_key:
+                    continue
+                seen_ids_lower.add(aid_l)
+                achievements_by_key[dedupe_key] = ach
 
     unachieved_arr = best_data.get("vecUnachieved")
     if isinstance(unachieved_arr, list):
@@ -315,12 +350,15 @@ def parse_local_user_stats(appid: int) -> LocalUserStatsEnvelope:
             if not isinstance(raw_item, Mapping):
                 continue
             ach = _format_librarycache_ach(raw_item, appid_int, unlocked_default=False)
+            aid_l = ach["id"].lower()
+            aname_l = ach["name"].lower()
             prog = ach.get("progress")
             if prog:
-                progress_by_name[ach["name"].lower()] = prog
-            k = ach["name"].lower() or ach["id"]
-            if k not in achievements_by_key:
-                achievements_by_key[k] = ach
+                progress_by_name[aname_l] = prog
+            dedupe_key = aname_l or aid_l
+            if aid_l not in seen_ids_lower and dedupe_key not in achievements_by_key:
+                seen_ids_lower.add(aid_l)
+                achievements_by_key[dedupe_key] = ach
 
     ach_list = list(achievements_by_key.values())
     raw_ntotal = best_data.get("nTotal", 0)

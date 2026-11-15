@@ -67,8 +67,12 @@ Defines how achievement schemas and global rarity stats are fetched from Steam C
      ]
    }
    ```
-   - `save_cached_achievements(appid, payload)` MUST always persist `{"appid": appid, "game_title": game_title, "achievements": achievements, "achievement_sets": achievement_sets}`.
+   - `save_cached_achievements(appid, payload)` MUST always persist `{"appid": appid, "game_title": game_title, "header_image": header_image, "achievements": achievements, "achievement_sets": achievement_sets, "cached_at": timestamp}` (including `cached_at` epoch timestamp).
    - `load_cached_achievements(appid)` MUST normalize legacy list caches into `{"appid": appid, "game_title": None, "achievements": list}` and synthesize/recompute `achievement_sets` from achievement `set_id`/`set_name` fields when needed.
+   - **Cache Freshness & Hash-Prefixed Assets**:
+     - If a disk cache entry is missing `cached_at`, older than 24 hours (`86400s`), or missing `header_image`, `fetch_achievements_from_steam` refreshes from Steam Community (falling back to the cached data if offline) so newly released DLC Achievement Sets and modern hash-prefixed store asset URLs (`/store_item_assets/steam/apps/<appid>/<hash>/header.jpg`) are automatically discovered.
+   - **Strict Deduplication**:
+     - `_parse_valve_ssr_data`, `parse_local_user_stats`, `SteamApiService.queryNativeSteamClient`, and `rank_achievements` MUST deduplicate achievements by `id` (and normalized name in `librarycache`) so an achievement is never counted or displayed twice.
 3. **Force Refresh**:
    - `fetch_achievements_from_steam(appid, force_refresh=False)` bypasses the disk cache before making the HTTP request when `force_refresh=True`, falling back to disk cache only if the HTTP request fails.
 4. **No Fake Hints**:

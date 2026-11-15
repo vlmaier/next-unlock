@@ -616,6 +616,123 @@ class TestBackendSuite(unittest.TestCase):
         self.assertEqual(ranked["up_next"][0]["id"], "ACH_LEGENDARY_ARMAMENTS")
         self.assertEqual(len(ranked["easy_grabs"]), 0)
 
+    def test_deduplication_and_stale_cache_refresh(self) -> None:
+        from backend.achievement_fetcher import (
+            fetch_achievements_from_steam,
+            parse_steam_community_html,
+            save_cached_achievements,
+        )
+        from backend.models import AchievementData
+
+        # 1. Duplicate api_name across schema_v2 groups must NOT double achievement counts
+        dup_query_data = {
+            "queries": [
+                {
+                    "queryKey": ["StoreItem", "app_2062430", "default_info"],
+                    "state": {"data": {"appid": 2062430, "name": "BALL x PIT"}},
+                },
+                {
+                    "queryKey": ["StoreItem", "app_2062430", "include_assets_without_overrides"],
+                    "state": {
+                        "data": {
+                            "appid": 2062430,
+                            "header": "header.jpg",
+                            "asset_url_format": "steam/apps/2062430/a157aa8de4/${FILENAME}",
+                        }
+                    },
+                },
+                {
+                    "queryKey": ["achievements", 2062430, "schema_v2"],
+                    "state": {
+                        "data": {
+                            "appid": 2062430,
+                            "groups": [
+                                {
+                                    "id": 0,
+                                    "name": "",
+                                    "dlcappid": 0,
+                                    "achievements": [
+                                        {
+                                            "internal_key": 1,
+                                            "api_name": "complete_graveyards",
+                                            "name": "BONExYARD",
+                                            "description": "Clear Boneyard",
+                                            "hidden": False,
+                                        }
+                                    ],
+                                },
+                                {
+                                    "id": 1,
+                                    "name": "Risen Ballbylon",
+                                    "dlcappid": 4008250,
+                                    "achievements": [
+                                        {
+                                            "internal_key": 1,
+                                            "api_name": "complete_graveyards",
+                                            "name": "BONExYARD",
+                                            "description": "Clear Boneyard",
+                                            "hidden": False,
+                                        },
+                                        {
+                                            "internal_key": 2,
+                                            "api_name": "risen_champ",
+                                            "name": "Risen Champion",
+                                            "description": "Win DLC",
+                                            "hidden": False,
+                                        },
+                                    ],
+                                },
+                            ],
+                        }
+                    },
+                },
+            ]
+        }
+        ssr_payload = {
+            "cdn": "cdn.fastly.steamstatic.com",
+            "renderContext": {"queryData": json.dumps(dup_query_data)},
+        }
+        html_doc = f'<html><script id="valve-ssr-data">{json.dumps(ssr_payload)}</script></html>'
+        parsed = parse_steam_community_html(html_doc)
+        self.assertEqual(len(parsed["achievements"]), 2)
+        self.assertEqual(
+            parsed["header_image"],
+            "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2062430/a157aa8de4/header.jpg",
+        )
+
+        # 2. rank_achievements must deduplicate identical IDs
+        dup_list: list[AchievementData] = [
+            parsed["achievements"][0],
+            parsed["achievements"][0].copy(),
+            parsed["achievements"][1],
+        ]
+        ranked = rank_achievements(dup_list, [])
+        self.assertEqual(len(ranked["locked"]), 2)
+
+        # 3. Legacy/stale cache without cached_at triggers network refresh when online
+        from backend.achievement_fetcher import get_cache_path
+
+        save_cached_achievements(
+            2062430,
+            [parsed["achievements"][0]],
+            game_title="BALL x PIT",
+            header_image=None,
+        )
+        cache_file = get_cache_path(2062430)
+        with open(cache_file, encoding="utf-8") as f:
+            legacy_obj = json.load(f)
+        legacy_obj.pop("cached_at", None)
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump(legacy_obj, f)
+
+        with patch("urllib.request.urlopen") as mock_open:
+            mock_resp = MagicMock()
+            mock_resp.read.return_value = html_doc.encode("utf-8")
+            mock_open.return_value = mock_resp
+            refreshed = fetch_achievements_from_steam(2062430, force_refresh=False)
+            self.assertEqual(len(refreshed["achievements"]), 2)
+            self.assertIsNotNone(refreshed["header_image"])
+
 
 if __name__ == "__main__":
     unittest.main()

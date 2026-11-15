@@ -346,7 +346,7 @@ def enrich_achievements_with_missables(
     if not missable_lookup and not is_offline:
         search_url = (
             f"https://steamcommunity.com/app/{appid_int}/guides/"
-            f"?searchText=missable&browsesort=toprated&browsefilter=toprated"
+            f"?searchText=missable&browsesort=toprated&browsefilter=toprated&requiredtags%5B%5D=English&l=english"
         )
         search_html = _http_get_text(search_url, timeout=2.5)
         if search_html:

@@ -6,16 +6,17 @@ Defines how Next Unlock discovers installed games, detects the currently running
 ## 2. Installed Game Discovery (`backend/achievement_parser.py`)
 1. **Steam Root Resolution (`find_all_steam_roots`)**:
    - Honors `NEXT_UNLOCK_STEAM_ROOT` environment variable if set (used for deterministic local testing and CI fixtures).
-   - Scans `/home/*/.local/share/Steam`, `/home/*/.steam/steam`, `/home/*/.steam/root`, and `~/` equivalents.
+   - Scans `DECKY_USER_HOME`, `/home/*/.local/share/Steam`, `/home/*/.steam/steam`, `/home/*/.var/app/com.valvesoftware.Steam/.local/share/Steam`, and `~/` equivalents so discovery works regardless of whether Decky runs as `deck`, another username, or `root`.
 2. **Library Folders (`get_library_folders`)**:
    - Reads `steamapps/libraryfolders.vdf` in each Steam root and extracts all `"path"` entries containing a valid `steamapps` directory.
    - Scans SD card / external mount patterns (`/run/media/**/steamapps`, `/media/**/steamapps`, `/mnt/**/steamapps`).
 3. **App Manifest Parsing (`parse_appmanifest`)**:
    - Parses `appmanifest_<appid>.acf` for `"appid"`, `"name"`, and `"LastPlayed"` timestamp.
    - Filters out non-game tools, Proton versions, Steam Linux Runtimes, Steamworks Common Redistributables, and Soundtracks (`IGNORED_APP_IDS` + case-insensitive name filter).
-4. **Sorting (`get_installed_games`)**:
+4. **Sorting (`get_installed_games`) & Fresh-Install Full Library Sync**:
    - Deduplicates by `appid` (keeping the entry with the highest `last_played`).
    - Places the currently running `appid` first (if any), followed by all installed games sorted by `last_played` descending, then `name` ascending.
+   - Frontend `getGames` uses a `15000ms` timeout (never failing at 3.5s on cold SD card scans) and progressively syncs uncached games in the background while surfacing a `"Syncing library achievements (X / Y)..."` status indicator.
 
 ## 3. Running Game Detection
 1. **Frontend Sync Detection (`getActiveApp`)**:
